@@ -1,0 +1,21 @@
+
+# Python
+__pycache__/
+*.py[cod]
+
+# VS Code
+.vscode/
+
+# Mac OS
+.DS_Store
+
+# AWS SAM / Terraform build artifacts
+.aws-sam/
+.terraform/
+*.zip
+
+# Node modules (if you add any)
+node_modules/
+
+# Env files
+.env
