@@ -15,12 +15,12 @@ document.getElementById('contact-form').addEventListener('submit', async functio
   if (!/\S+@\S+\.\S+/.test(data.email)) {
     document.getElementById('form-response').textContent = "Please enter a valid email address.";
     button.disabled = false;
-    button.textContent = "Send";
+    button.textContent = "Send Message";
     return;
   }
 
   try {
-    const response = await fetch('https://td9hkyid79.execute-api.us-east-1.amazonaws.com/prod/contact', {
+    const response = await fetch('https://td9hkyid79.execute-api.us-east-1.amazonaws.com/prod/formhook-92be6f8a4', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -28,11 +28,16 @@ document.getElementById('contact-form').addEventListener('submit', async functio
 
     const result = await response.json();
     document.getElementById('form-response').textContent = result.message || "Thanks for your message!";
+
+    // Clear the form fields
+    this.name.value = '';
+    this.email.value = '';
+    this.message.value = '';
   } catch (error) {
     console.error("Form submission error:", error);
     document.getElementById('form-response').textContent = "There was an error sending your message.";
   } finally {
     button.disabled = false;
-    button.textContent = "Send";
+    button.textContent = "Send Message";
   }
 });
