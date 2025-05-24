@@ -1,87 +1,75 @@
 
-# 🌩️ Cloud Resume Challenge — Brad Herrington
+# CloudCrafted.dev – Serverless Cloud Resume
 
-This project is my implementation of the [Cloud Resume Challenge](https://cloudresumechallenge.dev/) — a full-stack cloud project built entirely on **AWS Free Tier** to demonstrate real-world cloud skills.
+Welcome to **CloudCrafted.dev**, the personal resume site of Brad Herrington – a cloud security engineer with deep expertise in AWS, automation, and identity & access management.
 
-Hosted at: _[Insert Live URL here once deployed]_
-
----
-
-## 🔧 Tech Stack
-
-**Frontend**
-- HTML, CSS, JavaScript
-- Hosted on Amazon S3 (static website hosting)
-
-**Backend**
-- Visitor Counter API: API Gateway + Lambda + DynamoDB
-- Contact Form: API Gateway + Lambda + SES (Simple Email Service)
-
-**Other**
-- AWS IAM for permissions
-- (Optional) Infrastructure as Code with AWS SAM
-- (Optional) CI/CD using GitHub Actions
+This project was built from the ground up to showcase cloud-native skills using a fully serverless architecture.
 
 ---
 
-## 📁 Project Structure
+## 🌐 Live Site
+Visit: [https://cloudcrafted.dev](https://cloudcrafted.dev)
+
+---
+
+## 🚀 Tech Stack
+
+- **Frontend**: HTML, CSS, JavaScript
+- **Hosting**: Amazon S3 + CloudFront (HTTPS)
+- **Contact Form**: Lambda + SES (email delivery)
+- **Visitor Counter**: Lambda + DynamoDB + API Gateway
+- **DNS**: Route 53
+- **SSL**: AWS Certificate Manager
+
+---
+
+## 🛠 Features
+
+- Custom branded domain and logo
+- Secure contact form (SES + Lambda)
+- Live visit counter (serverless)
+- Fully HTTPS-enabled via CloudFront and ACM
+- DMARC, DKIM, SPF configured for deliverability
+- Clean mobile-friendly responsive design
+- Built and deployed entirely within the AWS Free Tier
+
+---
+
+## 📁 File Structure
 
 ```
-cloud-resume/
-├── frontend/
-│   ├── index.html
-│   ├── style.css
-│   ├── contact.js
-├── backend/
-│   ├── visitor-counter/
-│   │   └── lambda_function.py
-│   ├── contact-form/
-│   │   └── lambda_function.py
-│   └── policies/
-├── .github/workflows/
-│   └── deploy.yml (optional)
-├── templates/
-│   └── sam-template.yaml (optional)
-├── docs/
-│   ├── architecture.png
-│   └── screenshots/
-├── README.md
+.
+├── index.html          # Main resume page
+├── contact.js          # Contact form handler (client side)
+├── counter.js          # Visitor counter logic
+├── style.css           # Custom styles
+├── logo.png            # CloudCrafted brand logo
+└── README.md
 ```
 
 ---
 
-## 🚀 Features
+## 🔒 Security Considerations
 
-- ✅ Serverless resume website hosted via AWS S3
-- ✅ Real-time visitor counter (Lambda + DynamoDB)
-- ✅ Contact form with email notification (SES)
-- ✅ CORS-compliant APIs via API Gateway
-- ✅ Fully deployable within AWS Free Tier
-
----
-
-## 🧠 Lessons Learned
-
-_(This section will be filled out once the build is complete. Document anything you struggled with, learned, or would do differently.)_
+- No personal email or sensitive identifiers are exposed
+- API Gateway endpoints are randomized and CORS-protected
+- All secrets and logic handled server-side via AWS Lambda
+- SPF, DKIM, and DMARC are fully configured
+- No analytics/tracking included by default
 
 ---
 
-## 📸 Screenshots & Architecture
+## 📬 Contact
 
-![Architecture Diagram](docs/architecture.png)
-
-_(Add more screenshots or diagrams in `/docs/screenshots/`.)_
+If you'd like to connect professionally or ask about the project:
+> Use the contact form on [https://cloudcrafted.dev](https://cloudcrafted.dev)
 
 ---
 
 ## 📜 License
 
-MIT
+This project is licensed for personal portfolio use. You're welcome to use the structure for your own Cloud Resume Challenge.
 
 ---
 
-## 🤝 Connect
-
-Find me on:
-- GitHub: [@Get-PrivilegedLogic](https://github.com/Get-PrivilegedLogic)
-- LinkedIn: [linkedin.com/in/bradherrington](https://linkedin.com/in/bradherrington)
+Inspired by the [Cloud Resume Challenge](https://cloudresumechallenge.dev/) by Forrest Brazeal.
