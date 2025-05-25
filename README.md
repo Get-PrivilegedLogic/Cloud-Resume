@@ -25,7 +25,7 @@ Visit: [https://cloudcrafted.dev](https://cloudcrafted.dev)
 
 ## 🛠 Features
 
-- Custom branded domain and logo
+- Custom branded domain
 - Secure contact form (SES + Lambda)
 - Live visit counter (serverless)
 - Fully HTTPS-enabled via CloudFront and ACM
