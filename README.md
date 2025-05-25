@@ -43,7 +43,6 @@ Visit: [https://cloudcrafted.dev](https://cloudcrafted.dev)
 ├── contact.js          # Contact form handler (client side)
 ├── counter.js          # Visitor counter logic
 ├── style.css           # Custom styles
-├── logo.png            # CloudCrafted brand logo
 └── README.md
 ```
 
