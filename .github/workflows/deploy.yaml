@@ -20,12 +20,15 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
 
-      - name: Sync files to S3
-        run: aws s3 sync ./ s3://cloud-resume-herrington --delete --cache-control "max-age=0,no-cache,no-store,must-revalidate"
-
+      - name: Sync files to S3 with proper ACL
+        run: |
+          aws s3 sync ./ s3://${{ secrets.S3_BUCKET }} \
+            --delete \
+            --cache-control "max-age=0,no-cache,no-store,must-revalidate" \
+            --acl bucket-owner-full-control
 
       - name: Invalidate CloudFront cache
         run: |
           aws cloudfront create-invalidation \
-            --distribution-id EXQSZS0H8D5WY \
+            --distribution-id ${{ secrets.DISTRIBUTION_ID }} \
             --paths "/*"
