@@ -25,7 +25,7 @@ jobs:
           aws s3 sync ./ s3://${{ secrets.S3_BUCKET }} \
             --delete \
             --cache-control "max-age=0,no-cache,no-store,must-revalidate" \
-            --acl bucket-owner-full-control
+            --acl public-read
 
       - name: Invalidate CloudFront cache
         run: |
