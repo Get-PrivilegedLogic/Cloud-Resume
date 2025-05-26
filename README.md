@@ -60,7 +60,7 @@ Visit: [https://cloudcrafted.dev](https://cloudcrafted.dev)
 
 ## 📬 Contact
 
-If you'd like to connect professionally or ask about the project:
+If you'd like to connect professionally or ask about the project!
 > Use the contact form on [https://cloudcrafted.dev](https://cloudcrafted.dev)
 
 ---
