@@ -22,7 +22,7 @@ jobs:
 
       - name: Sync files to private S3 bucket
         run: |
-          aws s3 sync ./ s3://${{ secrets.S3_BUCKET }} \
+          aws s3 sync frontend/ s3://${{ secrets.S3_BUCKET }} \
             --delete \
             --exact-timestamps \
             --cache-control "max-age=0,no-cache,no-store,must-revalidate"
