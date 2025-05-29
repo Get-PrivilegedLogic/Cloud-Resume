@@ -1,0 +1,94 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Vault Log Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: "Segoe UI", sans-serif;
+            margin: 40px;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+        h1 {
+            text-align: center;
+        }
+        .chart-container {
+            width: 90%;
+            max-width: 900px;
+            margin: 50px auto;
+            background: #fff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+        canvas {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Vault Log Dashboard</h1>
+    <div class="chart-container">
+        <h2>Log Counts by Platform</h2>
+        <canvas id="platformChart"></canvas>
+    </div>
+    <div class="chart-container">
+        <h2>Log Counts by Action</h2>
+        <canvas id="actionChart"></canvas>
+    </div>
+
+    <script>
+        fetch('https://l7vwmrxys3.execute-api.us-east-1.amazonaws.com/prod/stats')
+            .then(response => response.json())
+            .then(data => {
+                const platformLabels = Object.keys(data.platform_counts);
+                const platformData = Object.values(data.platform_counts);
+
+                const actionLabels = Object.keys(data.action_counts);
+                const actionData = Object.values(data.action_counts);
+
+                new Chart(document.getElementById('platformChart'), {
+                    type: 'bar',
+                    data: {
+                        labels: platformLabels,
+                        datasets: [{
+                            label: 'Platform Count',
+                            data: platformData,
+                            backgroundColor: '#3498db'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            y: { beginAtZero: true }
+                        }
+                    }
+                });
+
+                new Chart(document.getElementById('actionChart'), {
+                    type: 'bar',
+                    data: {
+                        labels: actionLabels,
+                        datasets: [{
+                            label: 'Action Count',
+                            data: actionData,
+                            backgroundColor: '#2ecc71'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            y: { beginAtZero: true }
+                        }
+                    }
+                });
+            })
+            .catch(error => {
+                console.error('Error fetching stats:', error);
+            });
+    </script>
+</body>
+</html>
