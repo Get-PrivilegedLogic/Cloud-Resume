@@ -517,6 +517,19 @@ button:hover::after {
     transform: scale(1.05);
 }
 
+.cloud-resume-image {
+    background: linear-gradient(to bottom, var(--light) 10%, var(--primary-dark) 100%);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.cloud-resume-image img {
+    max-height: 100%;
+    object-fit: contain;
+    padding: 2rem;
+}
+
 .project-content {
     padding: 1.5rem;
     display: flex;
