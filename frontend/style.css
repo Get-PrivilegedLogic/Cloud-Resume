@@ -517,17 +517,15 @@ button:hover::after {
     transform: scale(1.05);
 }
 
+/* Special styling for CloudCrafted.dev header */
 .cloud-resume-image {
     background: white;
-    display: flex;
-    justify-content: center;
-    align-items: center;
 }
 
 .cloud-resume-image img {
     width: 100%;
     height: auto;
-    object-fit: contain;
+    display: block;
 }
 
 .project-content {
