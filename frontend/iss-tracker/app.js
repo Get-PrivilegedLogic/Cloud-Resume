@@ -81,10 +81,12 @@ async function updateISS() {
         if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
             throw new Error(`Invalid coordinates received: lat=${lat}, lng=${lng}`);
         }
-        
-        // Update indicator with coordinates
+          // Update indicator with coordinates
         statusIndicator.innerHTML = '✅';
         statusIndicator.title = `Last updated: ${new Date().toLocaleTimeString()} - Position: ${lat.toFixed(2)}°, ${lng.toFixed(2)}°`;
+        
+        // Update info header with current position data
+        updateInfoHeader(lat, lng, new Date().toLocaleTimeString());
         
         // Update marker position
         issMarker.setLatLng([lat, lng]);
@@ -135,10 +137,24 @@ async function updateISS() {
             }).addTo(map);
         }
 
+        // Update information in the header
+        updateInfoHeader(lat, lng, new Date().toLocaleTimeString());
+
     } catch (error) {
         console.error("Failed to fetch ISS position:", error);
         statusIndicator.innerHTML = '❌';
         statusIndicator.title = 'Error updating ISS position. Will retry.';
+    }
+}
+
+// Update information in the header
+function updateInfoHeader(lat, lng, timestamp) {
+    const updateTimeElement = document.getElementById('update-time');
+    const issPositionElement = document.getElementById('iss-position');
+    
+    if (updateTimeElement && issPositionElement) {
+        updateTimeElement.textContent = new Date().toLocaleTimeString();
+        issPositionElement.textContent = `${lat.toFixed(2)}°, ${lng.toFixed(2)}°`;
     }
 }
 
@@ -216,33 +232,49 @@ function handleResize() {
         debounceMoveend: true
     });
     
-    // Calculate optimal view
-    const containerWidth = window.innerWidth;
-    const containerHeight = window.innerHeight;
+    // Calculate available space considering the header
+    const navBarHeight = document.querySelector('.nav-bar')?.offsetHeight || 0;
+    const infoHeaderHeight = document.querySelector('.info-header')?.offsetHeight || 0;
+    const totalHeaderHeight = navBarHeight + infoHeaderHeight;
+    
+    // Calculate viewport dimensions
+    const windowWidth = window.innerWidth;
+    const windowHeight = window.innerHeight;
+    
+    // Calculate available map height
+    const availableHeight = windowHeight - totalHeaderHeight;
     
     // Ensure the map container fills the available space
     const mapContainer = document.getElementById('map');
-    mapContainer.style.width = containerWidth + 'px';
+    if (mapContainer) {
+        mapContainer.style.width = windowWidth + 'px';
+        mapContainer.style.height = availableHeight + 'px';
+    }
     
     // Set proper zoom level based on container size
     let optimalZoom;
-    if (containerWidth < 500) {
+    if (windowWidth < 500) {
         optimalZoom = 1; // Mobile view
-    } else if (containerWidth < 1000) {
+    } else if (windowWidth < 1000) {
         optimalZoom = 1.5; // Medium screen
     } else {
         optimalZoom = 2; // Large screen
     }
     
-    // Apply zoom and center
-    map.setView([0, 0], optimalZoom);
+    // Apply zoom and center if we have a current ISS position
+    const currentPosition = issMarker.getLatLng();
+    if (currentPosition && currentPosition.lat !== 0 && currentPosition.lng !== 0) {
+        map.setView([currentPosition.lat, currentPosition.lng], optimalZoom);
+    } else {
+        map.setView([0, 0], optimalZoom);
+    }
     
     // Set a strict max/min zoom to prevent over-zooming
     map.setMinZoom(1);
     map.setMaxZoom(8);
     
     // Log resize for debugging
-    console.log(`Map resized: ${containerWidth}x${containerHeight}, zoom: ${optimalZoom}`);
+    console.log(`Map resized: ${windowWidth}x${availableHeight}, zoom: ${optimalZoom}`);
 }
 
 // Initialize the map properly on page load
