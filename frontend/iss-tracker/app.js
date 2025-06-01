@@ -5,20 +5,25 @@ let map = L.map('map', {
     scrollWheelZoom: true, // Enable scroll wheel for better user experience
     zoomDelta: 0.25,
     zoomSnap: 0.25,
-    worldCopyJump: true, // Enable proper handling of edge cases
+    worldCopyJump: false, // Disable world wrapping for static NASA-style view
     attributionControl: true,
     fadeAnimation: true,
     zoomAnimation: true,
     minZoom: 1,
-    maxBoundsViscosity: 0, // Allow movement everywhere
-    preferCanvas: true // Better performance
+    maxZoom: 6, // Limit max zoom to prevent getting too close
+    maxBounds: [[-90, -180], [90, 180]], // Restrict view to one world map
+    maxBoundsViscosity: 1.0, // Make bounds "hard" - can't pan beyond them
+    preferCanvas: true, // Better performance
+    bounceAtZoomLimits: false // Prevent bouncing when hitting zoom limits
 });
 
-// Use a different tile provider with better world coverage
+// Use NASA/ESRI imagery for a space-like view
 L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
     attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
-    noWrap: false, // Allow wrapping for complete world coverage
-    tms: false
+    noWrap: true, // Prevent tile wrapping for static NASA-style view
+    tms: false,
+    bounds: [[-90, -180], [90, 180]], // Only load tiles within world bounds
+    maxZoom: 6
 }).addTo(map);
 
 // Custom ISS icon
@@ -95,15 +100,14 @@ async function updateISS() {
         
         // Create popup with position info
         issMarker.bindPopup(`<b>ISS Current Position</b><br>Latitude: ${lat.toFixed(4)}°<br>Longitude: ${lng.toFixed(4)}°<br>Updated: ${new Date().toLocaleTimeString()}`);
+          // For NASA-style static map, always keep ISS in view
+        // Ensure we're not exceeding the bounds of our static map
+        let adjustedLng = lng;
+        if (adjustedLng < -180) adjustedLng = -180;
+        if (adjustedLng > 180) adjustedLng = 180;
         
-        // Handle date line crossing by checking current center and new position
-        const currentCenter = map.getCenter();
-        const lngDiff = Math.abs(currentCenter.lng - lng);
-        
-        // Only adjust view if we're not crossing the date line or user has manually panned
-        if (lngDiff < 170) {
-            map.setView([lat, lng], map.getZoom());
-        }
+        // Always keep ISS centered in view
+        map.setView([lat, adjustedLng], map.getZoom());
           // Log position update
         console.log(`ISS Position Updated: Lat ${lat.toFixed(4)}, Lng ${lng.toFixed(4)} at ${new Date().toLocaleTimeString()}`);
         
@@ -111,9 +115,10 @@ async function updateISS() {
         if (!window.trailPositions) {
             window.trailPositions = [];
         }
-        
-        // Add new position to the trail
-        window.trailPositions.push([lat, lng]);
+          // Add new position to the trail
+        // For static NASA-style map, ensure trail coordinates are within bounds
+        const boundedLng = lng < -180 ? -180 : (lng > 180 ? 180 : lng);
+        window.trailPositions.push([lat, boundedLng]);
         
         // Limit trail length to prevent performance issues
         if (window.trailPositions.length > 100) {
@@ -129,8 +134,26 @@ async function updateISS() {
                 }
             });
             
-            // Draw the updated trail
-            L.polyline(window.trailPositions, {
+            // Process trail points to handle date line crossing on static map
+            let processedTrail = [];
+            let lastPoint = null;
+            
+            // Process each point to avoid lines crossing the entire map when crossing the date line
+            window.trailPositions.forEach(point => {
+                if (lastPoint) {
+                    // If crossing date line, don't connect the points
+                    const lngDiff = Math.abs(lastPoint[1] - point[1]);
+                    if (lngDiff > 300) {
+                        // Start a new segment
+                        processedTrail.push(null); // Null creates a break in the line
+                    }
+                }
+                processedTrail.push(point);
+                lastPoint = point;
+            });
+            
+            // Draw the updated trail with date line handling
+            L.polyline(processedTrail, {
                 color: '#ff4500',
                 weight: 3,
                 opacity: 0.7,
@@ -253,21 +276,25 @@ function handleResize() {
         mapContainer.style.left = '0'; // Ensure alignment with left edge
         mapContainer.style.right = '0'; // Ensure alignment with right edge
     }
-    
-    // Set proper zoom level based on container size
+      // Set proper zoom level based on container size for NASA-style view
     let optimalZoom;
     if (windowWidth < 500) {
         optimalZoom = 1; // Mobile view
     } else if (windowWidth < 1000) {
-        optimalZoom = 1.5; // Medium screen
+        optimalZoom = 2; // Medium screen
     } else {
-        optimalZoom = 2; // Large screen
+        optimalZoom = 2.5; // Large screen - closer view like NASA trackers
     }
     
     // Apply zoom and center if we have a current ISS position
     const currentPosition = issMarker.getLatLng();
     if (currentPosition && currentPosition.lat !== 0 && currentPosition.lng !== 0) {
-        map.setView([currentPosition.lat, currentPosition.lng], optimalZoom);
+        // For NASA-like view, we may need to adjust longitude to keep in bounds
+        let lng = currentPosition.lng;
+        if (lng < -180) lng = -180;
+        if (lng > 180) lng = 180;
+        
+        map.setView([currentPosition.lat, lng], optimalZoom);
     } else {
         map.setView([0, 0], optimalZoom);
     }
