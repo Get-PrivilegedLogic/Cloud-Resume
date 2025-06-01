@@ -1,7 +1,7 @@
-// Initialize map
+// Initialize map and fit to container width
 let map = L.map('map', {
     center: [0, 0],
-    zoom: 2,
+    zoom: 1,  // Start at a lower zoom level
     scrollWheelZoom: false,
     zoomDelta: 0.5,
     zoomSnap: 0.5,
@@ -89,6 +89,28 @@ async function fetchAndRenderTrail() {
     }
 }
 
+// Function to handle container resize and adjust map
+function handleResize() {
+    // Get the bounds of the world to create a view that fits our constraints
+    const worldBounds = L.latLngBounds([[-90, -180], [90, 180]]);
+    
+    // Adjust the map to fit these bounds
+    map.fitBounds(worldBounds, {
+        padding: [10, 10],
+        maxZoom: 2,
+        animate: false
+    });
+}
+
+// Call resize handler on load
+handleResize();
+
+// Handle window resize events
+window.addEventListener('resize', handleResize);
+
 // Load ISS data
 updateISS();
 fetchAndRenderTrail();
+
+// Set interval to update ISS position
+setInterval(updateISS, 10000); // Update every 10 seconds
