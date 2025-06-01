@@ -34,4 +34,6 @@ h1 {
   height: 80vh;
   width: 100%;
   border-top: 1px solid #2c3e50;
+  max-width: 100%;
+  margin: 0 auto;
 }
