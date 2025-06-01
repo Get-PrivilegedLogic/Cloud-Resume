@@ -55,36 +55,52 @@ function updateISSPosition(lat, lng) {
 
 // Draw the orbit path based on accumulated positions
 function updateOrbitPath() {
-    if (orbitPathPoints.length < 2) return;
+    // Log the number of points for debugging
+    console.log(`Updating orbit path with ${orbitPathPoints.length} points`);
+    
+    if (orbitPathPoints.length < 2) {
+        console.log("Not enough points to draw path");
+        return;
+    }
     
     const orbitPath = document.querySelector('.orbit-path');
-    if (!orbitPath) return;
+    if (!orbitPath) {
+        console.error("Orbit path container not found");
+        return;
+    }
     
     // Create SVG element
     let svg = orbitPath.querySelector('svg');
     if (!svg) {
+        console.log("Creating new SVG element for orbit path");
         svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         svg.setAttribute('width', '100%');
         svg.setAttribute('height', '100%');
+        svg.style.position = 'absolute';
+        svg.style.top = '0';
+        svg.style.left = '0';
         orbitPath.appendChild(svg);
     }
     
-    // Create path element
+    // Create path element with much higher visibility
     let path = svg.querySelector('path:not(.prediction)');
     if (!path) {
+        console.log("Creating new path element for orbit trail");
         path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
         path.setAttribute('fill', 'none');
-        path.setAttribute('stroke', '#ffcc00');
-        path.setAttribute('stroke-width', '3');
-        path.setAttribute('stroke-dasharray', '5, 7');
-        path.setAttribute('opacity', '0.9');
+        path.setAttribute('stroke', '#ff9500'); // Brighter orange color
+        path.setAttribute('stroke-width', '4');  // Thicker line
+        path.setAttribute('stroke-dasharray', '7, 5');
+        path.setAttribute('opacity', '1');  // Full opacity
         path.setAttribute('stroke-linecap', 'round');
+        path.setAttribute('filter', 'drop-shadow(0 0 3px #ff9500)'); // Add glow
         svg.appendChild(path);
     } else {
-        // Update existing path attributes to make sure it's visible
-        path.setAttribute('stroke-width', '3');
-        path.setAttribute('opacity', '0.9');
-        path.setAttribute('stroke-linecap', 'round');
+        // Update existing path attributes to make sure it's very visible
+        path.setAttribute('stroke', '#ff9500');
+        path.setAttribute('stroke-width', '4');
+        path.setAttribute('opacity', '1');
+        path.setAttribute('filter', 'drop-shadow(0 0 3px #ff9500)');
     }
     
     // Create path data from points
@@ -114,11 +130,15 @@ function updateOrbitPath() {
         }
     });
     
+    // Set the path data and log for debugging
     path.setAttribute('d', pathData);
+    console.log(`Path data set with ${orbitPathPoints.length} points`);
 }
 
 // Generate orbit prediction
 function generateOrbitPrediction(lat, lng) {
+    console.log(`Generating orbit prediction from lat: ${lat}, lng: ${lng}`);
+    
     const orbitPoints = [];
     const orbitalInclination = 51.6; // ISS orbital inclination in degrees
     
@@ -138,37 +158,48 @@ function generateOrbitPrediction(lat, lng) {
         }
     }
     
+    console.log(`Created ${orbitPoints.length} prediction points`);
+    
     // Draw orbit prediction line
     const orbitPath = document.querySelector('.orbit-path');
-    if (!orbitPath) return;
+    if (!orbitPath) {
+        console.error("Orbit path container not found for prediction");
+        return;
+    }
     
     // Create SVG for orbit prediction
     let svg = orbitPath.querySelector('svg');
     if (!svg) {
+        console.log("Creating new SVG element for prediction path");
         svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         svg.setAttribute('width', '100%');
         svg.setAttribute('height', '100%');
+        svg.style.position = 'absolute';
+        svg.style.top = '0';
+        svg.style.left = '0';
         orbitPath.appendChild(svg);
     }
     
-    // Create path for prediction
+    // Create path for prediction with enhanced visibility
     let path = svg.querySelector('path.prediction');
     if (!path) {
+        console.log("Creating new path element for prediction");
         path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
         path.setAttribute('class', 'prediction');
         path.setAttribute('fill', 'none');
-        path.setAttribute('stroke', '#ffdd00');
-        path.setAttribute('stroke-width', '2');
+        path.setAttribute('stroke', '#ffdd00'); // Bright yellow
+        path.setAttribute('stroke-width', '2.5');
         path.setAttribute('stroke-dasharray', '3, 5');
-        path.setAttribute('opacity', '0.6');
+        path.setAttribute('opacity', '0.8'); // More visible
         path.setAttribute('stroke-linecap', 'round');
+        path.setAttribute('filter', 'drop-shadow(0 0 2px #ffdd00)'); // Add glow
         svg.appendChild(path);
     } else {
-        // Update existing path attributes to make sure it's visible
+        // Update existing path attributes for better visibility
         path.setAttribute('stroke', '#ffdd00');
-        path.setAttribute('stroke-width', '2');
-        path.setAttribute('opacity', '0.6');
-        path.setAttribute('stroke-linecap', 'round');
+        path.setAttribute('stroke-width', '2.5');
+        path.setAttribute('opacity', '0.8');
+        path.setAttribute('filter', 'drop-shadow(0 0 2px #ffdd00)');
     }
     
     // Create path data
@@ -197,7 +228,9 @@ function generateOrbitPrediction(lat, lng) {
         }
     });
     
+    // Set the path data and log for debugging
     path.setAttribute('d', pathData);
+    console.log("Prediction path data set");
 }
 
 // Update information in the header with all NASA-style data
@@ -279,13 +312,21 @@ async function updateISS() {
         
         // Update ISS position on the static map
         updateISSPosition(lat, lng);
-        
-        // Add the current position to our orbit path points
+          // Add the current position to our orbit path points
         orbitPathPoints.push({lat, lng});
+        console.log(`Added point to orbit path: [${lat}, ${lng}], total points: ${orbitPathPoints.length}`);
         
         // Keep only the last maxOrbitPoints points
         if (orbitPathPoints.length > maxOrbitPoints) {
             orbitPathPoints.shift(); // Remove oldest point
+        }
+        
+        // After the first position, also add a few points around it to make trail visible immediately
+        if (orbitPathPoints.length === 1) {
+            console.log("First position - adding additional points to make trail visible");
+            // Add a few points slightly offset to make a visible trail
+            orbitPathPoints.push({lat: lat + 0.1, lng: lng + 0.1});
+            orbitPathPoints.push({lat: lat + 0.2, lng: lng + 0.2});
         }
         
         // Update the orbit path visualization
