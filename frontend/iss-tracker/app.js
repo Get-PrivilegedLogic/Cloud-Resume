@@ -1,23 +1,22 @@
 // Initialize map and fit to container width
 let map = L.map('map', {
     center: [0, 0],
-    zoom: 2,
+    zoom: 1,
     scrollWheelZoom: false,
     zoomDelta: 0.25,
     zoomSnap: 0.25,
-    worldCopyJump: true,
-    maxBounds: [[-90, -180], [90, 180]],
-    maxBoundsViscosity: 1.0,
+    worldCopyJump: true, // Changed to true to fix edge rendering issues
     attributionControl: true,
     fadeAnimation: true,
-    zoomAnimation: true
+    zoomAnimation: true,
+    minZoom: 1
 });
 
-// Tile layer with noWrap to stop world duplication
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+// Use a different tile provider with better world coverage
+L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
     noWrap: true,
-    bounds: [[-90, -180], [90, 180]],
-    attribution: '&copy; OpenStreetMap contributors'
+    tms: false
 }).addTo(map);
 
 // Custom ISS icon
@@ -211,11 +210,19 @@ async function fetchAndRenderTrail() {
 // Function to handle container resize and adjust map
 function handleResize() {
     // Force map invalidation to recalculate size
-    map.invalidateSize();
+    map.invalidateSize({
+        animate: false,
+        pan: false,
+        debounceMoveend: true
+    });
     
     // Calculate optimal view
-    const containerWidth = document.getElementById('map').offsetWidth;
-    const containerHeight = document.getElementById('map').offsetHeight;
+    const containerWidth = window.innerWidth;
+    const containerHeight = window.innerHeight;
+    
+    // Ensure the map container fills the available space
+    const mapContainer = document.getElementById('map');
+    mapContainer.style.width = containerWidth + 'px';
     
     // Set proper zoom level based on container size
     let optimalZoom;
@@ -233,6 +240,9 @@ function handleResize() {
     // Set a strict max/min zoom to prevent over-zooming
     map.setMinZoom(1);
     map.setMaxZoom(8);
+    
+    // Log resize for debugging
+    console.log(`Map resized: ${containerWidth}x${containerHeight}, zoom: ${optimalZoom}`);
 }
 
 // Initialize the map properly on page load
@@ -243,6 +253,9 @@ window.addEventListener('DOMContentLoaded', function() {
     // Add another resize call after images and resources load
     window.addEventListener('load', function() {
         setTimeout(handleResize, 200);
+        
+        // Call resize one more time after a delay to ensure everything is fully loaded
+        setTimeout(handleResize, 1000);
     });
 });
 
@@ -251,6 +264,11 @@ let resizeTimer;
 window.addEventListener('resize', function() {
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(handleResize, 250);
+    
+    // Force additional resize after orientation changes (especially for mobile)
+    if (window.orientation !== undefined) {
+        setTimeout(handleResize, 500);
+    }
 });
 
 // Wait for full page load to initialize data
@@ -258,9 +276,18 @@ window.addEventListener('load', function() {
     // Initialize trail positions array
     window.trailPositions = [];
     
+    // Force map to recalculate size on Leaflet load
+    if (L && L.version) {
+        console.log('Leaflet detected, version:', L.version);
+        map.invalidateSize({animate: false, pan: false});
+    }
+    
     // Short delay to ensure Leaflet is fully initialized
     setTimeout(() => {
         try {
+            // Force another size recalculation
+            map.invalidateSize({animate: false, pan: false});
+            
             // Initial update
             updateISS();
             
