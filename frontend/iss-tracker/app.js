@@ -1,21 +1,23 @@
 // Initialize map and fit to container width
 let map = L.map('map', {
     center: [0, 0],
-    zoom: 1,
-    scrollWheelZoom: false,
+    zoom: 2, // Higher initial zoom to see more detail
+    scrollWheelZoom: true, // Enable scroll wheel for better user experience
     zoomDelta: 0.25,
     zoomSnap: 0.25,
-    worldCopyJump: true, // Changed to true to fix edge rendering issues
+    worldCopyJump: true, // Enable proper handling of edge cases
     attributionControl: true,
     fadeAnimation: true,
     zoomAnimation: true,
-    minZoom: 1
+    minZoom: 1,
+    maxBoundsViscosity: 0, // Allow movement everywhere
+    preferCanvas: true // Better performance
 });
 
 // Use a different tile provider with better world coverage
 L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
     attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
-    noWrap: true,
+    noWrap: false, // Allow wrapping for complete world coverage
     tms: false
 }).addTo(map);
 
@@ -243,12 +245,13 @@ function handleResize() {
     
     // Calculate available map height
     const availableHeight = windowHeight - totalHeaderHeight;
-    
-    // Ensure the map container fills the available space
+      // Ensure the map container fills the available space
     const mapContainer = document.getElementById('map');
     if (mapContainer) {
-        mapContainer.style.width = windowWidth + 'px';
+        mapContainer.style.width = '100vw'; // Use viewport width for consistency
         mapContainer.style.height = availableHeight + 'px';
+        mapContainer.style.left = '0'; // Ensure alignment with left edge
+        mapContainer.style.right = '0'; // Ensure alignment with right edge
     }
     
     // Set proper zoom level based on container size
@@ -284,10 +287,27 @@ window.addEventListener('DOMContentLoaded', function() {
     
     // Add another resize call after images and resources load
     window.addEventListener('load', function() {
+        // Force map to recalculate and redraw completely
+        map.invalidateSize({animate: false, pan: false, debounceMoveend: true});
         setTimeout(handleResize, 200);
         
-        // Call resize one more time after a delay to ensure everything is fully loaded
-        setTimeout(handleResize, 1000);
+        // Call resize multiple times to ensure proper rendering as resources load
+        setTimeout(function() {
+            map.invalidateSize({animate: false, pan: false, debounceMoveend: true});
+            handleResize();
+            // Force full redraw of tiles
+            map.eachLayer(function(layer) {
+                if (layer instanceof L.TileLayer) {
+                    layer.redraw();
+                }
+            });
+        }, 1000);
+        
+        // Final resize check after everything should be loaded
+        setTimeout(function() {
+            map.invalidateSize({animate: false, pan: false, debounceMoveend: true});
+            handleResize();
+        }, 2000);
     });
 });
 
