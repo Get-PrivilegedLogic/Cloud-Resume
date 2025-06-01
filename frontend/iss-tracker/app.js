@@ -101,9 +101,40 @@ async function updateISS() {
         if (lngDiff < 170) {
             map.setView([lat, lng], map.getZoom());
         }
-        
-        // Log position update
+          // Log position update
         console.log(`ISS Position Updated: Lat ${lat.toFixed(4)}, Lng ${lng.toFixed(4)} at ${new Date().toLocaleTimeString()}`);
+        
+        // Add position to trail
+        if (!window.trailPositions) {
+            window.trailPositions = [];
+        }
+        
+        // Add new position to the trail
+        window.trailPositions.push([lat, lng]);
+        
+        // Limit trail length to prevent performance issues
+        if (window.trailPositions.length > 100) {
+            window.trailPositions.shift(); // Remove oldest position
+        }
+        
+        // Update the trail visualization if we have enough points
+        if (window.trailPositions.length >= 2) {
+            // Clear any existing polylines
+            map.eachLayer(function(layer) {
+                if (layer instanceof L.Polyline && !(layer instanceof L.Rectangle)) {
+                    map.removeLayer(layer);
+                }
+            });
+            
+            // Draw the updated trail
+            L.polyline(window.trailPositions, {
+                color: '#ff4500',
+                weight: 3,
+                opacity: 0.7,
+                dashArray: '5, 10',
+                smoothFactor: 1.5
+            }).addTo(map);
+        }
 
     } catch (error) {
         console.error("Failed to fetch ISS position:", error);
@@ -117,48 +148,59 @@ async function fetchAndRenderTrail() {
     const statusIndicator = document.getElementById('status-indicator');
     
     try {
-        // Skip trail fetching for now as it's causing errors
-        console.log('Trail rendering skipped - using direct API only');
-        return;
+        // Instead of using the problematic API, let's generate our own trail
+        // by tracking ISS positions over time
+        console.log('Creating simulated ISS trail');
         
-        /* Commented out until API is fixed
-        const response = await fetch('https://7lqytqrrzl.execute-api.us-east-1.amazonaws.com/prod/trail');
-        */
-        
-        if (!response.ok) {
-            console.warn(`Trail API returned status: ${response.status}`);
-            return;
+        // Initialize trail data if it doesn't exist yet
+        if (!window.trailPositions) {
+            window.trailPositions = [];
         }
         
-        const data = await response.json();
-        
-        if (!Array.isArray(data)) {
-            console.warn("Trail API did not return an array:", data);
-            return;
+        // Try to get current ISS position to start the trail
+        try {
+            const response = await fetch('https://api.wheretheiss.at/v1/satellites/25544');
+            if (response.ok) {
+                const data = await response.json();
+                const lat = parseFloat(data.latitude);
+                const lng = parseFloat(data.longitude);
+                
+                // Add position to trail if valid
+                if (!isNaN(lat) && !isNaN(lng)) {
+                    window.trailPositions.push([lat, lng]);
+                    console.log(`Added position to trail: [${lat.toFixed(2)}, ${lng.toFixed(2)}]`);
+                }
+            }
+        } catch (err) {
+            console.warn('Could not fetch initial position for trail:', err);
         }
-        
-        // Filter out any invalid coordinates
-        const validPoints = data.filter(point => {
-            const lat = parseFloat(point.lat);
-            const lng = parseFloat(point.lng);
-            return !isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
+          // Clear any existing polylines
+        map.eachLayer(function(layer) {
+            if (layer instanceof L.Polyline && !(layer instanceof L.Rectangle)) {
+                map.removeLayer(layer);
+            }
         });
         
-        if (validPoints.length >= 2) {
-            const latlngs = validPoints.map(point => [parseFloat(point.lat), parseFloat(point.lng)]);
+        // If we have enough points, draw the trail
+        if (window.trailPositions && window.trailPositions.length >= 2) {
             try {
-                L.polyline(latlngs, {
-                    color: 'red',
-                    weight: 2,
+                // Create a copy of the positions to avoid mutation issues
+                const positions = [...window.trailPositions];
+                
+                L.polyline(positions, {
+                    color: '#ff4500',
+                    weight: 3,
                     opacity: 0.7,
-                    noClip: false
+                    dashArray: '5, 10',
+                    smoothFactor: 1.5
                 }).addTo(map);
-                console.log(`Trail rendered with ${validPoints.length} points`);
+                
+                console.log(`Trail rendered with ${positions.length} points`);
             } catch (renderError) {
                 console.error("Error rendering trail:", renderError);
             }
         } else {
-            console.warn(`Trail skipped: need at least 2 valid points, got: ${validPoints.length}`);
+            console.log("Not enough points for trail yet, waiting for more positions...");
         }
 
     } catch (error) {
@@ -171,45 +213,67 @@ function handleResize() {
     // Force map invalidation to recalculate size
     map.invalidateSize();
     
-    // Get the bounds of the world
-    const southWest = L.latLng(-85, -180);
-    const northEast = L.latLng(85, 180);
-    const worldBounds = L.latLngBounds(southWest, northEast);
+    // Calculate optimal view
+    const containerWidth = document.getElementById('map').offsetWidth;
+    const containerHeight = document.getElementById('map').offsetHeight;
+    
+    // Set proper zoom level based on container size
+    let optimalZoom;
+    if (containerWidth < 500) {
+        optimalZoom = 1; // Mobile view
+    } else if (containerWidth < 1000) {
+        optimalZoom = 1.5; // Medium screen
+    } else {
+        optimalZoom = 2; // Large screen
+    }
+    
+    // Apply zoom and center
+    map.setView([0, 0], optimalZoom);
     
     // Set a strict max/min zoom to prevent over-zooming
     map.setMinZoom(1);
     map.setMaxZoom(8);
-    
-    // Adjust the map to fit the world bounds
-    map.fitBounds(worldBounds, {
-        padding: [5, 5],
-        maxZoom: 2,
-        animate: false
-    });
 }
 
-// Call resize handler after a short delay to ensure DOM is fully loaded
-setTimeout(handleResize, 300);
-
-// Handle window resize events
-window.addEventListener('resize', function() {
+// Initialize the map properly on page load
+window.addEventListener('DOMContentLoaded', function() {
+    // Call resize handler immediately to set initial view
     setTimeout(handleResize, 100);
+    
+    // Add another resize call after images and resources load
+    window.addEventListener('load', function() {
+        setTimeout(handleResize, 200);
+    });
 });
 
-// Load ISS data when page and all resources are fully loaded
+// Handle window resize events with debounce for better performance
+let resizeTimer;
+window.addEventListener('resize', function() {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(handleResize, 250);
+});
+
+// Wait for full page load to initialize data
 window.addEventListener('load', function() {
+    // Initialize trail positions array
+    window.trailPositions = [];
+    
     // Short delay to ensure Leaflet is fully initialized
     setTimeout(() => {
         try {
             // Initial update
             updateISS();
-            fetchAndRenderTrail();
             
-            // Set interval to update ISS position every minute (60000 ms)
-            setInterval(updateISS, 60000);
+            // Set interval to update ISS position every 30 seconds (30000 ms)
+            // This gives us more frequent position updates for a better trail
+            const updateInterval = setInterval(updateISS, 30000);
+            
+            // Set up trail updates (less frequent than position updates)
+            setTimeout(fetchAndRenderTrail, 5000);
+            const trailInterval = setInterval(fetchAndRenderTrail, 120000);
             
             // Log to console for verification
-            console.log('ISS Tracker initialized - updates every minute');
+            console.log('ISS Tracker initialized - position updates every 30 seconds, trail updates every 2 minutes');
         } catch (initError) {
             console.error('Error during initialization:', initError);
             document.getElementById('status-indicator').innerHTML = '⚠️';
