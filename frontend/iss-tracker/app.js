@@ -18,9 +18,9 @@ function addPulsingEffect() {
         style.id = 'pulse-keyframes';
         style.textContent = `
             @keyframes pulse {
-                0% { filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.7)); }
-                50% { filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.9)); }
-                100% { filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.7)); }
+                0% { filter: drop-shadow(0 0 5px rgba(255, 255, 0, 0.8)) brightness(1.2); transform: translate(-50%, -50%) scale(1); }
+                50% { filter: drop-shadow(0 0 15px rgba(255, 255, 0, 1)) brightness(1.5); transform: translate(-50%, -50%) scale(1.15); }
+                100% { filter: drop-shadow(0 0 5px rgba(255, 255, 0, 0.8)) brightness(1.2); transform: translate(-50%, -50%) scale(1); }
             }
         `;
         document.head.appendChild(style);
@@ -75,10 +75,16 @@ function updateOrbitPath() {
         path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
         path.setAttribute('fill', 'none');
         path.setAttribute('stroke', '#ffcc00');
-        path.setAttribute('stroke-width', '2');
-        path.setAttribute('stroke-dasharray', '5, 10');
-        path.setAttribute('opacity', '0.7');
+        path.setAttribute('stroke-width', '3');
+        path.setAttribute('stroke-dasharray', '5, 7');
+        path.setAttribute('opacity', '0.9');
+        path.setAttribute('stroke-linecap', 'round');
         svg.appendChild(path);
+    } else {
+        // Update existing path attributes to make sure it's visible
+        path.setAttribute('stroke-width', '3');
+        path.setAttribute('opacity', '0.9');
+        path.setAttribute('stroke-linecap', 'round');
     }
     
     // Create path data from points
@@ -151,11 +157,18 @@ function generateOrbitPrediction(lat, lng) {
         path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
         path.setAttribute('class', 'prediction');
         path.setAttribute('fill', 'none');
-        path.setAttribute('stroke', 'yellow');
-        path.setAttribute('stroke-width', '1.5');
-        path.setAttribute('stroke-dasharray', '3, 7');
-        path.setAttribute('opacity', '0.4');
+        path.setAttribute('stroke', '#ffdd00');
+        path.setAttribute('stroke-width', '2');
+        path.setAttribute('stroke-dasharray', '3, 5');
+        path.setAttribute('opacity', '0.6');
+        path.setAttribute('stroke-linecap', 'round');
         svg.appendChild(path);
+    } else {
+        // Update existing path attributes to make sure it's visible
+        path.setAttribute('stroke', '#ffdd00');
+        path.setAttribute('stroke-width', '2');
+        path.setAttribute('opacity', '0.6');
+        path.setAttribute('stroke-linecap', 'round');
     }
     
     // Create path data
