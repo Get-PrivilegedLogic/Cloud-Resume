@@ -56,51 +56,31 @@ async function updateISS() {
     statusIndicator.title = 'Updating ISS position...';
     
     try {
-        // Use a fallback API if the primary one fails
-        let apiUrls = [
-            'https://7lqytqrrzl.execute-api.us-east-1.amazonaws.com/prod/position',
-            'https://api.wheretheiss.at/v1/satellites/25544'
-        ];
+        // Use a reliable public API as the primary source
+        const apiUrl = 'https://api.wheretheiss.at/v1/satellites/25544';
         
-        let response, data, lat, lng;
-        let success = false;
+        console.log('Fetching ISS position from:', apiUrl);
+        const response = await fetch(apiUrl, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json'
+            },
+            cache: 'no-cache'
+        });
         
-        // Try each API in order
-        for (const url of apiUrls) {
-            try {
-                response = await fetch(url);
-                
-                if (!response.ok) {
-                    console.warn(`API endpoint ${url} returned status: ${response.status}`);
-                    continue;
-                }
-                
-                data = await response.json();
-                
-                // Handle different API response formats
-                if (url.includes('wheretheiss.at')) {
-                    lat = parseFloat(data.latitude);
-                    lng = parseFloat(data.longitude);
-                } else {
-                    lat = parseFloat(data.latitude);
-                    lng = parseFloat(data.longitude);
-                }
-                
-                // Validate coordinates
-                if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
-                    console.warn(`Invalid coordinates received: lat=${lat}, lng=${lng}`);
-                    continue;
-                }
-                
-                success = true;
-                break;
-            } catch (apiError) {
-                console.warn(`Error with API ${url}:`, apiError);
-            }
+        if (!response.ok) {
+            throw new Error(`API returned status: ${response.status}`);
         }
         
-        if (!success) {
-            throw new Error("All APIs failed to return valid position data");
+        const data = await response.json();
+        
+        // Parse coordinates
+        const lat = parseFloat(data.latitude);
+        const lng = parseFloat(data.longitude);
+        
+        // Validate coordinates
+        if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+            throw new Error(`Invalid coordinates received: lat=${lat}, lng=${lng}`);
         }
         
         // Update indicator with coordinates
@@ -137,7 +117,13 @@ async function fetchAndRenderTrail() {
     const statusIndicator = document.getElementById('status-indicator');
     
     try {
+        // Skip trail fetching for now as it's causing errors
+        console.log('Trail rendering skipped - using direct API only');
+        return;
+        
+        /* Commented out until API is fixed
         const response = await fetch('https://7lqytqrrzl.execute-api.us-east-1.amazonaws.com/prod/trail');
+        */
         
         if (!response.ok) {
             console.warn(`Trail API returned status: ${response.status}`);
@@ -214,14 +200,20 @@ window.addEventListener('resize', function() {
 window.addEventListener('load', function() {
     // Short delay to ensure Leaflet is fully initialized
     setTimeout(() => {
-        // Initial update
-        updateISS();
-        fetchAndRenderTrail();
-        
-        // Set interval to update ISS position every minute (60000 ms)
-        setInterval(updateISS, 60000);
-        
-        // Log to console for verification
-        console.log('ISS Tracker initialized - updates every minute');
-    }, 500);
+        try {
+            // Initial update
+            updateISS();
+            fetchAndRenderTrail();
+            
+            // Set interval to update ISS position every minute (60000 ms)
+            setInterval(updateISS, 60000);
+            
+            // Log to console for verification
+            console.log('ISS Tracker initialized - updates every minute');
+        } catch (initError) {
+            console.error('Error during initialization:', initError);
+            document.getElementById('status-indicator').innerHTML = '⚠️';
+            document.getElementById('status-indicator').title = 'Initialization error. Please refresh the page.';
+        }
+    }, 1000); // Longer timeout to ensure everything is ready
 });
