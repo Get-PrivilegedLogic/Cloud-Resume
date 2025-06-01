@@ -13,12 +13,34 @@
   <div class="nav-bar">
     <a href="../index.html" class="back-link"><i class="fas fa-home"></i> Back to CloudCrafted.dev</a>
     <span class="title">🛰️ ISS Live Tracker <span id="status-indicator" title="Loading ISS position...">⏳</span></span>
-  </div>
-  <div class="info-header">
-    <h1>International Space Station - Live Position Tracker</h1>
-    <div id="iss-info">Last updated: <span id="update-time">Loading...</span> | Position: <span id="iss-position">Loading coordinates...</span></div>
-  </div>
-  <div id="map"></div>
+  </div>  <div class="info-header">
+    <div class="header-content">
+      <h1>International Space Station - Live Position Tracker</h1>
+      <div class="orbital-data">
+        <div class="data-group">
+          <div class="data-label">Latitude</div>
+          <div id="iss-latitude" class="data-value">--°</div>
+        </div>
+        <div class="data-group">
+          <div class="data-label">Longitude</div>
+          <div id="iss-longitude" class="data-value">--°</div>
+        </div>
+        <div class="data-group">
+          <div class="data-label">Altitude</div>
+          <div id="iss-altitude" class="data-value">-- mi</div>
+        </div>
+        <div class="data-group">
+          <div class="data-label">Speed</div>
+          <div id="iss-velocity" class="data-value">-- mph</div>
+        </div>
+        <div class="data-group">
+          <div class="data-label">Updated</div>
+          <div id="update-time" class="data-value">--:--:--</div>
+        </div>
+      </div>
+    </div>
+  </div>  <div id="map"></div>
+  <div class="earth-glow"></div>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="app.js"></script>
 </body>

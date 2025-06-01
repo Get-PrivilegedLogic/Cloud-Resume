@@ -1,59 +1,132 @@
-// Initialize map and fit to container width
+// Initialize NASA-style map
 let map = L.map('map', {
     center: [0, 0],
-    zoom: 2, // Higher initial zoom to see more detail
-    scrollWheelZoom: true, // Enable scroll wheel for better user experience
+    zoom: 2,
+    scrollWheelZoom: true,
     zoomDelta: 0.25,
     zoomSnap: 0.25,
-    worldCopyJump: false, // Disable world wrapping for static NASA-style view
+    worldCopyJump: false,
     attributionControl: true,
     fadeAnimation: true,
     zoomAnimation: true,
     minZoom: 1,
-    maxZoom: 6, // Limit max zoom to prevent getting too close
-    maxBounds: [[-90, -180], [90, 180]], // Restrict view to one world map
-    maxBoundsViscosity: 1.0, // Make bounds "hard" - can't pan beyond them
-    preferCanvas: true, // Better performance
-    bounceAtZoomLimits: false // Prevent bouncing when hitting zoom limits
+    maxZoom: 7,
+    maxBounds: [[-90, -190], [90, 190]], // Slightly wider bounds to avoid cut-off
+    maxBoundsViscosity: 1.0,
+    preferCanvas: true,
+    bounceAtZoomLimits: false,
+    attributionControl: false
 });
 
-// Use NASA/ESRI imagery for a space-like view
-L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-    attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
-    noWrap: true, // Prevent tile wrapping for static NASA-style view
-    tms: false,
-    bounds: [[-90, -180], [90, 180]], // Only load tiles within world bounds
-    maxZoom: 6
+// Add NASA-style dark tile layer
+const nasaDarkTiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    subdomains: 'abcd',
+    maxZoom: 20,
+    noWrap: true,
+    bounds: [[-90, -180], [90, 180]]
 }).addTo(map);
 
-// Custom ISS icon
+// Add grid lines for NASA-style look
+const addGridLines = () => {
+    // Add longitude lines
+    for (let i = -180; i <= 180; i += 30) {
+        L.polyline([[-90, i], [90, i]], {
+            color: 'rgba(50, 100, 200, 0.5)',
+            weight: 0.5,
+            interactive: false
+        }).addTo(map);
+    }
+    
+    // Add latitude lines
+    for (let i = -90; i <= 90; i += 30) {
+        L.polyline([[i, -180], [i, 180]], {
+            color: 'rgba(50, 100, 200, 0.5)',
+            weight: 0.5,
+            interactive: false
+        }).addTo(map);
+    }
+    
+    // Add special equator line
+    L.polyline([[0, -180], [0, 180]], {
+        color: 'rgba(100, 150, 255, 0.8)',
+        weight: 1,
+        dashArray: '5, 8',
+        interactive: false
+    }).addTo(map);
+};
+
+// Call the function to add grid lines
+addGridLines();
+
+// Add custom attribution with NASA-style look
+L.control.attribution({
+    position: 'bottomright',
+    prefix: 'CloudCrafted.dev ISS Tracker | Data: wheretheiss.at'
+}).addTo(map);
+
+// Custom ISS icon with better visibility on dark map
 let issIcon = L.icon({
     iconUrl: 'https://upload.wikimedia.org/wikipedia/commons/d/d0/International_Space_Station.svg',
-    iconSize: [50, 32],
-    iconAnchor: [25, 16]
+    iconSize: [42, 30],
+    iconAnchor: [21, 15],
+    className: 'iss-icon'
 });
 
-let issMarker = L.marker([0, 0], { icon: issIcon }).addTo(map);
+// Add ISS marker
+let issMarker = L.marker([0, 0], { 
+    icon: issIcon,
+    zIndexOffset: 1000 // Ensure ISS is always on top
+}).addTo(map);
 
-// Zoom control toggle button
-const zoomToggle = L.control({ position: 'topright' });
-zoomToggle.onAdd = function (map) {
-    const div = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
-    const btn = L.DomUtil.create('a', '', div);
-    btn.innerHTML = '🖱️ Zoom';
-    btn.href = '#';
-    btn.title = 'Enable scroll zoom temporarily';
-    btn.style.fontSize = '18px';
-    btn.onclick = function (e) {
-        e.preventDefault();
-        map.scrollWheelZoom.enable();
-        setTimeout(() => {
-            map.scrollWheelZoom.disable();
-        }, 5000);
-    };
-    return div;
-};
-zoomToggle.addTo(map);
+// Add ISS trajectory line placeholder
+let trajectoryLine = null;
+let orbitCircle = null;
+
+// Generate a predicted orbit path (approximate orbital path based on current position)
+function generateOrbitPath(lat, lng, alt) {
+    // Clear previous trajectory elements
+    if (trajectoryLine) map.removeLayer(trajectoryLine);
+    if (orbitCircle) map.removeLayer(orbitCircle);
+    
+    // Create points for a rough orbital trajectory (simplified approximation)
+    const points = [];
+    const orbitalInclination = 51.6; // ISS orbital inclination in degrees
+    
+    // Create future orbit points (simplified prediction)
+    for (let i = 0; i <= 360; i += 5) {
+        const angle = i * Math.PI / 180;
+        const latOffset = Math.sin(angle) * orbitalInclination * 0.75;
+        const lngOffset = i * 0.5; // Move eastward
+        
+        let orbitLat = lat + latOffset;
+        let orbitLng = (lng + lngOffset) % 360;
+        if (orbitLng > 180) orbitLng -= 360;
+        
+        // Ensure we stay within valid bounds
+        if (orbitLat >= -90 && orbitLat <= 90) {
+            points.push([orbitLat, orbitLng]);
+        }
+    }
+    
+    // Create trajectory line with custom styling
+    trajectoryLine = L.polyline(points, {
+        color: '#ffcc00',
+        weight: 2,
+        opacity: 0.7,
+        dashArray: '5, 10',
+        className: 'iss-trajectory'
+    }).addTo(map);
+    
+    // Add a subtle orbit circle
+    orbitCircle = L.circle([lat, lng], {
+        radius: 2000000, // Approximate, based on altitude
+        color: '#75b9ff',
+        fillColor: 'rgba(0, 102, 255, 0.05)',
+        weight: 1,
+        fillOpacity: 0.1
+    }).addTo(map);
+}
 
 // Update ISS position and recenter
 async function updateISS() {
@@ -79,27 +152,43 @@ async function updateISS() {
         }
         
         const data = await response.json();
-        
-        // Parse coordinates
+          // Parse coordinates and other data
         const lat = parseFloat(data.latitude);
         const lng = parseFloat(data.longitude);
+        const altitude = parseFloat(data.altitude);
+        const velocity = parseFloat(data.velocity);
+        const timestamp = new Date().toLocaleTimeString();
         
         // Validate coordinates
         if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
             throw new Error(`Invalid coordinates received: lat=${lat}, lng=${lng}`);
         }
-          // Update indicator with coordinates
-        statusIndicator.innerHTML = '✅';
-        statusIndicator.title = `Last updated: ${new Date().toLocaleTimeString()} - Position: ${lat.toFixed(2)}°, ${lng.toFixed(2)}°`;
         
-        // Update info header with current position data
-        updateInfoHeader(lat, lng, new Date().toLocaleTimeString());
+        // Update status indicator
+        statusIndicator.innerHTML = '✅';
+        statusIndicator.title = `Last updated: ${timestamp} - Position: ${lat.toFixed(2)}°, ${lng.toFixed(2)}°`;
+        
+        // Update info header with all position data
+        updateInfoHeader(lat, lng, altitude, velocity, timestamp);
         
         // Update marker position
         issMarker.setLatLng([lat, lng]);
         
-        // Create popup with position info
-        issMarker.bindPopup(`<b>ISS Current Position</b><br>Latitude: ${lat.toFixed(4)}°<br>Longitude: ${lng.toFixed(4)}°<br>Updated: ${new Date().toLocaleTimeString()}`);
+        // Create popup with detailed position info
+        const altitudeMiles = (altitude * 0.621371).toFixed(0);
+        const velocityMph = (velocity * 0.621371).toFixed(0);
+        
+        issMarker.bindPopup(
+            `<b>ISS Current Position</b><br>` +
+            `Latitude: ${lat.toFixed(2)}°<br>` +
+            `Longitude: ${lng.toFixed(2)}°<br>` +
+            `Altitude: ${altitudeMiles} miles<br>` +
+            `Speed: ${velocityMph} mph<br>` +
+            `Updated: ${timestamp}`
+        );
+        
+        // Generate orbit prediction path based on current position
+        generateOrbitPath(lat, lng, altitude);
           // For NASA-style static map, always keep ISS in view
         // Ensure we're not exceeding the bounds of our static map
         let adjustedLng = lng;
@@ -172,14 +261,36 @@ async function updateISS() {
     }
 }
 
-// Update information in the header
-function updateInfoHeader(lat, lng, timestamp) {
+// Update information in the header with all NASA-style data
+function updateInfoHeader(lat, lng, altitude, velocity, timestamp) {
     const updateTimeElement = document.getElementById('update-time');
-    const issPositionElement = document.getElementById('iss-position');
+    const latElement = document.getElementById('iss-latitude');
+    const lngElement = document.getElementById('iss-longitude');
+    const altElement = document.getElementById('iss-altitude');
+    const velElement = document.getElementById('iss-velocity');
     
-    if (updateTimeElement && issPositionElement) {
-        updateTimeElement.textContent = new Date().toLocaleTimeString();
-        issPositionElement.textContent = `${lat.toFixed(2)}°, ${lng.toFixed(2)}°`;
+    if (updateTimeElement) {
+        updateTimeElement.textContent = timestamp;
+    }
+    
+    if (latElement) {
+        latElement.textContent = lat.toFixed(2) + '°';
+    }
+    
+    if (lngElement) {
+        lngElement.textContent = lng.toFixed(2) + '°';
+    }
+    
+    if (altElement && altitude !== undefined) {
+        // Convert from km to miles
+        const altitudeMiles = (altitude * 0.621371).toFixed(0);
+        altElement.textContent = altitudeMiles + ' mi';
+    }
+    
+    if (velElement && velocity !== undefined) {
+        // Convert from km/h to mph
+        const velocityMph = (velocity * 0.621371).toFixed(0);
+        velElement.textContent = velocityMph + ' mph';
     }
 }
 

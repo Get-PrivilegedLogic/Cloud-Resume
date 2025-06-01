@@ -21,13 +21,14 @@ body {
 }
 
 .nav-bar {
-  background-color: #2c3e50;
-  padding: 0.8rem;
+  background-color: #00112b;
+  padding: 0.7rem 1rem;
   text-align: left;
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-shrink: 0;
+  border-bottom: 1px solid #0a3872;
 }
 
 .title {
@@ -70,43 +71,71 @@ h1 {
 }
 
 .info-header {
-  background-color: #f5f5f5;
-  padding: 0.5rem 1rem;
-  border-bottom: 1px solid #dee2e6;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  background-color: rgba(0, 13, 36, 0.95);
+  color: #fff;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #0e4686;
   flex-shrink: 0;
+  width: 100%;
   z-index: 10;
 }
 
+.header-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
 .info-header h1 {
-  margin: 0.3rem 0;
-  font-size: 1.3rem;
-  color: #2c3e50;
-}
-
-#iss-info {
-  font-size: 0.9rem;
-  color: #495057;
-  margin-bottom: 0.5rem;
-}
-
-#update-time, #iss-position {
+  margin: 0.2rem 0 0.5rem;
+  font-size: 1.1rem;
+  color: #fff;
   font-weight: 500;
-  color: #0d6efd;
 }
 
-/* Update map to account for the header */
+.orbital-data {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  margin-bottom: 0.3rem;
+  font-family: 'Roboto Mono', monospace, system-ui;
+}
+
+.data-group {
+  padding: 0 0.5rem;
+  min-width: 100px;
+  flex: 1;
+  text-align: center;
+}
+
+.data-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  color: #7fb1ff;
+  letter-spacing: 0.05rem;
+}
+
+.data-value {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #fff;
+  text-shadow: 0 0 10px rgba(72, 169, 255, 0.4);
+}
+
+/* Update map to account for the header - NASA style */
 #map {
-  height: calc(100vh - 120px); /* Fallback for browsers without JS */
-  width: 100vw; /* Use viewport width to ensure full width coverage */
+  height: calc(100vh - 115px); 
+  width: 100%; 
   margin: 0;
   padding: 0;
-  border-top: 1px solid #e9ecef;
   position: relative;
   flex-grow: 1;
   overflow: hidden;
+  background-color: #000d24;
   transition: height 0.3s ease;
-  left: 0; /* Ensure alignment with left edge */
+  left: 0;
+  right: 0;
+  bottom: 0;
 }
 
 /* Ensure viewport is properly handled */
@@ -136,12 +165,12 @@ html.ios, html.ios body {
   }
 }
 
-/* Style for NASA-like static world map */
+/* NASA-style map styling */
 .leaflet-container {
-  background-color: #000 !important; /* Space-like background */
+  background-color: #000d24 !important; /* NASA dark blue */
 }
 
-/* Ensure proper containment of map elements */
+/* Custom NASA styling */
 .leaflet-tile-container {
   width: 100% !important;
 }
@@ -150,7 +179,6 @@ html.ios, html.ios body {
   visibility: visible !important;
 }
 
-/* Override default Leaflet container sizes */
 .leaflet-tile-pane {
   width: 100% !important;
 }
@@ -161,9 +189,49 @@ html, body, #map, .leaflet-container {
   overflow: hidden !important;
 }
 
-/* Fix for proper map alignment */
-.leaflet-map-pane {
-  position: absolute !important;
+/* Improved control styling */
+.leaflet-control-zoom {
+  border: none !important;
+  margin: 15px !important;
+}
+
+.leaflet-control-zoom a {
+  background-color: rgba(0, 42, 92, 0.7) !important;
+  color: white !important;
+  border: 1px solid #0066cc !important;
+}
+
+.leaflet-control-zoom a:hover {
+  background-color: #0066cc !important;
+}
+
+/* Custom attribution style */
+.leaflet-control-attribution {
+  background-color: rgba(0, 21, 56, 0.7) !important;
+  color: rgba(255, 255, 255, 0.7) !important;
+  font-size: 9px !important;
+  padding: 2px 8px !important;
+}
+
+/* Custom popup style */
+.leaflet-popup-content-wrapper {
+  background-color: rgba(0, 26, 64, 0.9) !important;
+  color: white !important;
+  border: 1px solid #0066cc !important;
+  border-radius: 3px !important;
+}
+
+.leaflet-popup-tip {
+  background-color: #0066cc !important;
+}
+
+/* Trajectory line styling */
+.iss-trajectory {
+  stroke: #ffcc00;
+  stroke-width: 2;
+  stroke-dasharray: 5, 5;
+  fill: none;
+  pointer-events: none;
 }
 
 /* Fix edge issues */
@@ -172,5 +240,50 @@ html, body, #map, .leaflet-container {
     width: 100vw !important;
     margin-left: 0 !important;
     margin-right: 0 !important;
+  }
+}
+
+/* NASA-style enhancements */
+.iss-icon {
+  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.8));
+}
+
+/* Add a subtle earth glow effect */
+.earth-glow {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 50%, rgba(0, 60, 120, 0.15), transparent 70%);
+  z-index: 400;
+}
+
+/* Night/day terminator styling */
+.day-night-terminator {
+  stroke: rgba(255, 255, 0, 0.5);
+  stroke-width: 1;
+  stroke-dasharray: 5, 5;
+  fill: rgba(255, 255, 0, 0.05);
+}
+
+/* Add Google font for NASA-like look */
+@import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500&display=swap');
+
+/* Mobile adjustments */
+@media screen and (max-width: 768px) {
+  .orbital-data {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  
+  .data-group {
+    padding: 0.2rem;
+    min-width: 80px;
+    margin-bottom: 0.3rem;
+  }
+  
+  .info-header h1 {
+    font-size: 1rem;
   }
 }
