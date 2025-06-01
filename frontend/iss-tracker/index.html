@@ -1,17 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <title>ISS Tracker – CloudCrafted.dev</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="style.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-<body>
-  <div class="nav-bar">
+<body>  <div class="nav-bar">
     <a href="../index.html" class="back-link"><i class="fas fa-home"></i> Back to CloudCrafted.dev</a>
-  </div>  <h1>🛰️ ISS Live Tracker <span id="status-indicator" title="Loading ISS position...">⏳</span></h1>
+    <span class="title">🛰️ ISS Live Tracker <span id="status-indicator" title="Loading ISS position...">⏳</span></span>
+  </div>
   <div id="map"></div>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="app.js"></script>
