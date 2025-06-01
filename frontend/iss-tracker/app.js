@@ -1,13 +1,16 @@
 // Initialize map and fit to container width
 let map = L.map('map', {
     center: [0, 0],
-    zoom: 1,  // Start at a lower zoom level
+    zoom: 2,
     scrollWheelZoom: false,
-    zoomDelta: 0.5,
-    zoomSnap: 0.5,
+    zoomDelta: 0.25,
+    zoomSnap: 0.25,
     worldCopyJump: true,
     maxBounds: [[-90, -180], [90, 180]],
-    maxBoundsViscosity: 1.0
+    maxBoundsViscosity: 1.0,
+    attributionControl: true,
+    fadeAnimation: true,
+    zoomAnimation: true
 });
 
 // Tile layer with noWrap to stop world duplication
@@ -48,13 +51,26 @@ zoomToggle.addTo(map);
 
 // Update ISS position and recenter
 async function updateISS() {
+    const statusIndicator = document.getElementById('status-indicator');
+    statusIndicator.innerHTML = '⏳';
+    statusIndicator.title = 'Updating ISS position...';
+    
     try {
         const response = await fetch('https://7lqytqrrzl.execute-api.us-east-1.amazonaws.com/prod/position');
-        const data = await response.json();        const lat = parseFloat(data.latitude);
+        const data = await response.json();
+        
+        const lat = parseFloat(data.latitude);
         const lng = parseFloat(data.longitude);
-
+        
+        // Update indicator with coordinates
+        statusIndicator.innerHTML = '✅';
+        statusIndicator.title = `Last updated: ${new Date().toLocaleTimeString()} - Position: ${lat.toFixed(2)}°, ${lng.toFixed(2)}°`;
+        
         // Update marker position
         issMarker.setLatLng([lat, lng]);
+        
+        // Create popup with position info
+        issMarker.bindPopup(`<b>ISS Current Position</b><br>Latitude: ${lat.toFixed(4)}°<br>Longitude: ${lng.toFixed(4)}°<br>Updated: ${new Date().toLocaleTimeString()}`);
         
         // Handle date line crossing by checking current center and new position
         const currentCenter = map.getCenter();
@@ -64,9 +80,14 @@ async function updateISS() {
         if (lngDiff < 170) {
             map.setView([lat, lng], map.getZoom());
         }
+        
+        // Log position update
+        console.log(`ISS Position Updated: Lat ${lat.toFixed(4)}, Lng ${lng.toFixed(4)} at ${new Date().toLocaleTimeString()}`);
 
     } catch (error) {
         console.error("Failed to fetch ISS position:", error);
+        statusIndicator.innerHTML = '❌';
+        statusIndicator.title = 'Error updating ISS position. Will retry.';
     }
 }
 
@@ -91,26 +112,43 @@ async function fetchAndRenderTrail() {
 
 // Function to handle container resize and adjust map
 function handleResize() {
-    // Get the bounds of the world to create a view that fits our constraints
-    const worldBounds = L.latLngBounds([[-90, -180], [90, 180]]);
+    // Force map invalidation to recalculate size
+    map.invalidateSize();
     
-    // Adjust the map to fit these bounds
+    // Get the bounds of the world
+    const southWest = L.latLng(-85, -180);
+    const northEast = L.latLng(85, 180);
+    const worldBounds = L.latLngBounds(southWest, northEast);
+    
+    // Set a strict max/min zoom to prevent over-zooming
+    map.setMinZoom(1);
+    map.setMaxZoom(8);
+    
+    // Adjust the map to fit the world bounds
     map.fitBounds(worldBounds, {
-        padding: [10, 10],
+        padding: [5, 5],
         maxZoom: 2,
         animate: false
     });
 }
 
-// Call resize handler on load
-handleResize();
+// Call resize handler after a short delay to ensure DOM is fully loaded
+setTimeout(handleResize, 300);
 
 // Handle window resize events
-window.addEventListener('resize', handleResize);
+window.addEventListener('resize', function() {
+    setTimeout(handleResize, 100);
+});
 
-// Load ISS data
-updateISS();
-fetchAndRenderTrail();
-
-// Set interval to update ISS position
-setInterval(updateISS, 10000); // Update every 10 seconds
+// Load ISS data immediately on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Initial update
+    updateISS();
+    fetchAndRenderTrail();
+    
+    // Set interval to update ISS position every minute (60000 ms)
+    setInterval(updateISS, 60000);
+    
+    // Log to console for verification
+    console.log('ISS Tracker initialized - updates every minute');
+});
