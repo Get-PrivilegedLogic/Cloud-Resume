@@ -56,11 +56,52 @@ async function updateISS() {
     statusIndicator.title = 'Updating ISS position...';
     
     try {
-        const response = await fetch('https://7lqytqrrzl.execute-api.us-east-1.amazonaws.com/prod/position');
-        const data = await response.json();
+        // Use a fallback API if the primary one fails
+        let apiUrls = [
+            'https://7lqytqrrzl.execute-api.us-east-1.amazonaws.com/prod/position',
+            'https://api.wheretheiss.at/v1/satellites/25544'
+        ];
         
-        const lat = parseFloat(data.latitude);
-        const lng = parseFloat(data.longitude);
+        let response, data, lat, lng;
+        let success = false;
+        
+        // Try each API in order
+        for (const url of apiUrls) {
+            try {
+                response = await fetch(url);
+                
+                if (!response.ok) {
+                    console.warn(`API endpoint ${url} returned status: ${response.status}`);
+                    continue;
+                }
+                
+                data = await response.json();
+                
+                // Handle different API response formats
+                if (url.includes('wheretheiss.at')) {
+                    lat = parseFloat(data.latitude);
+                    lng = parseFloat(data.longitude);
+                } else {
+                    lat = parseFloat(data.latitude);
+                    lng = parseFloat(data.longitude);
+                }
+                
+                // Validate coordinates
+                if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+                    console.warn(`Invalid coordinates received: lat=${lat}, lng=${lng}`);
+                    continue;
+                }
+                
+                success = true;
+                break;
+            } catch (apiError) {
+                console.warn(`Error with API ${url}:`, apiError);
+            }
+        }
+        
+        if (!success) {
+            throw new Error("All APIs failed to return valid position data");
+        }
         
         // Update indicator with coordinates
         statusIndicator.innerHTML = '✅';
@@ -93,16 +134,45 @@ async function updateISS() {
 
 // Fetch and render trail from DynamoDB
 async function fetchAndRenderTrail() {
+    const statusIndicator = document.getElementById('status-indicator');
+    
     try {
         const response = await fetch('https://7lqytqrrzl.execute-api.us-east-1.amazonaws.com/prod/trail');
-        const data = await response.json();        if (Array.isArray(data) && data.length >= 2) {
-            const latlngs = data.map(point => [parseFloat(point.lat), parseFloat(point.lng)]);
-            L.polyline(latlngs, {
-                color: 'red',
-                noClip: false
-            }).addTo(map);
+        
+        if (!response.ok) {
+            console.warn(`Trail API returned status: ${response.status}`);
+            return;
+        }
+        
+        const data = await response.json();
+        
+        if (!Array.isArray(data)) {
+            console.warn("Trail API did not return an array:", data);
+            return;
+        }
+        
+        // Filter out any invalid coordinates
+        const validPoints = data.filter(point => {
+            const lat = parseFloat(point.lat);
+            const lng = parseFloat(point.lng);
+            return !isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
+        });
+        
+        if (validPoints.length >= 2) {
+            const latlngs = validPoints.map(point => [parseFloat(point.lat), parseFloat(point.lng)]);
+            try {
+                L.polyline(latlngs, {
+                    color: 'red',
+                    weight: 2,
+                    opacity: 0.7,
+                    noClip: false
+                }).addTo(map);
+                console.log(`Trail rendered with ${validPoints.length} points`);
+            } catch (renderError) {
+                console.error("Error rendering trail:", renderError);
+            }
         } else {
-            console.warn("Trail skipped: need at least 2 points, got:", data.length);
+            console.warn(`Trail skipped: need at least 2 valid points, got: ${validPoints.length}`);
         }
 
     } catch (error) {
@@ -140,15 +210,18 @@ window.addEventListener('resize', function() {
     setTimeout(handleResize, 100);
 });
 
-// Load ISS data immediately on page load
-document.addEventListener('DOMContentLoaded', function() {
-    // Initial update
-    updateISS();
-    fetchAndRenderTrail();
-    
-    // Set interval to update ISS position every minute (60000 ms)
-    setInterval(updateISS, 60000);
-    
-    // Log to console for verification
-    console.log('ISS Tracker initialized - updates every minute');
+// Load ISS data when page and all resources are fully loaded
+window.addEventListener('load', function() {
+    // Short delay to ensure Leaflet is fully initialized
+    setTimeout(() => {
+        // Initial update
+        updateISS();
+        fetchAndRenderTrail();
+        
+        // Set interval to update ISS position every minute (60000 ms)
+        setInterval(updateISS, 60000);
+        
+        // Log to console for verification
+        console.log('ISS Tracker initialized - updates every minute');
+    }, 500);
 });
