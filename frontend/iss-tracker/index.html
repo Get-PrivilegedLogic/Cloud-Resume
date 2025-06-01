@@ -6,7 +6,6 @@
   <title>ISS Tracker – CloudCrafted.dev</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="style.css" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>  
@@ -39,9 +38,33 @@
         </div>
       </div>
     </div>
-  </div>  <div id="map"></div>
-  <div class="earth-glow"></div>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  </div>  <div id="map-container">
+    <div class="world-map-background"></div>
+    <div class="grid-overlay"></div>
+    <div id="iss-icon"></div>
+    <div class="orbit-path"></div>
+    <div class="earth-glow"></div>
+    <div class="coordinate-labels">
+      <div class="lat-labels">
+        <span>90°N</span>
+        <span>60°N</span>
+        <span>30°N</span>
+        <span>0°</span>
+        <span>30°S</span>
+        <span>60°S</span>
+        <span>90°S</span>
+      </div>
+      <div class="lng-labels">
+        <span>180°W</span>
+        <span>120°W</span>
+        <span>60°W</span>
+        <span>0°</span>
+        <span>60°E</span>
+        <span>120°E</span>
+        <span>180°E</span>
+      </div>
+    </div>
+  </div>
   <script src="app.js"></script>
 </body>
 </html>
