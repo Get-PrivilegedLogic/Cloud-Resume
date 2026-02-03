@@ -36,7 +36,11 @@ def lambda_handler(event, context):
         print("=== Email sent ===")
         return {
             'statusCode': 200,
-            'headers': {'Access-Control-Allow-Origin': '*'},
+            'headers': {
+                'Access-Control-Allow-Origin': 'https://cloudcrafted.dev',
+                'Access-Control-Allow-Methods': 'POST,OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type'
+            },
             'body': json.dumps({'message': 'Email sent successfully'})
         }
 
@@ -45,6 +49,8 @@ def lambda_handler(event, context):
         print(str(e))
         return {
             'statusCode': 500,
-            'headers': {'Access-Control-Allow-Origin': '*'},
+            'headers': {
+                'Access-Control-Allow-Origin': 'https://cloudcrafted.dev'
+            },
             'body': json.dumps({'error': str(e)})
         }

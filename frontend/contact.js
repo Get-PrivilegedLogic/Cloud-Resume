@@ -1,5 +1,7 @@
 
-document.getElementById('contact-form').addEventListener('submit', async function(e) {
+import { CONFIG } from './config.js';
+
+document.getElementById('contact-form').addEventListener('submit', async function (e) {
   e.preventDefault();
 
   const button = this.querySelector("button");
@@ -20,7 +22,7 @@ document.getElementById('contact-form').addEventListener('submit', async functio
   }
 
   try {
-    const response = await fetch('https://td9hkyid79.execute-api.us-east-1.amazonaws.com/prod/formhook-92be6f8a4', {
+    const response = await fetch(CONFIG.API_ENDPOINTS.CONTACT_FORM, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)

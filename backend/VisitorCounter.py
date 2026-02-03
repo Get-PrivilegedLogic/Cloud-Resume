@@ -17,18 +17,32 @@ def convert_decimals(obj):
         return obj
 
 def lambda_handler(event, context):
-    response = table.get_item(Key={'id': 'visitor-count'})
-    item = response.get('Item', {'id': 'visitor-count', 'count': 0})
-    
-    current_count = int(item['count']) if isinstance(item['count'], Decimal) else item['count']
-    new_count = current_count + 1
+    try:
+        response = table.update_item(
+            Key={'id': 'visitor-count'},
+            UpdateExpression="ADD #count :val",
+            ExpressionAttributeNames={'#count': 'count'},
+            ExpressionAttributeValues={':val': 1},
+            ReturnValues="UPDATED_NEW"
+        )
+        
+        new_count = int(response['Attributes']['count'])
 
-    table.put_item(Item={'id': 'visitor-count', 'count': new_count})
-
-    return {
-        'statusCode': 200,
-        'headers': {
-            'Access-Control-Allow-Origin': '*'
-        },
-        'body': json.dumps({'count': convert_decimals(new_count)})
-    }
+        return {
+            'statusCode': 200,
+            'headers': {
+                'Access-Control-Allow-Origin': 'https://cloudcrafted.dev',
+                'Access-Control-Allow-Methods': 'GET,OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type'
+            },
+            'body': json.dumps({'count': new_count})
+        }
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        return {
+            'statusCode': 500,
+            'headers': {
+                'Access-Control-Allow-Origin': 'https://cloudcrafted.dev'
+            },
+            'body': json.dumps({'error': 'Could not update visitor count'})
+        }

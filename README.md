@@ -49,10 +49,17 @@ Visit: [https://cloudcrafted.dev](https://cloudcrafted.dev)
 
 ```
 .
-├── index.html          # Main resume page
-├── contact.js          # Contact form handler (client side)
-├── counter.js          # Visitor counter logic
-├── style.css           # Custom styles
+├── backend/            # AWS Lambda functions (Python)
+├── frontend/           # Static website files
+│   ├── index.html      # Main resume page
+│   ├── projects.html   # Projects portfolio
+│   ├── config.js       # Centralized API configuration [NEW]
+│   ├── contact.js      # Form handler (ES Module)
+│   ├── counter.js      # Visitor counter (ES Module)
+│   ├── script.js       # UI interactions
+│   ├── style.css       # Custom styles
+│   └── robots.txt      # SEO instructions [NEW]
+├── docs/               # Documentation and architecture
 └── README.md
 ```
 
