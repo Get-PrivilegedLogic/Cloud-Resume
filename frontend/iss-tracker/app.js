@@ -3,6 +3,329 @@
 // Global variables
 let orbitPathPoints = [];
 const maxOrbitPoints = 100;
+let crewData = null;
+
+// ================================================
+// CREW PANEL FUNCTIONALITY
+// ================================================
+
+// Fetch crew data with HTTPS fallback chain
+async function fetchCrewData() {
+    // HTTPS-compatible APIs (primary and fallback)
+    const apiEndpoints = [
+        {
+            url: 'https://corquaid.github.io/international-space-station-APIs/JSON/people-in-space.json',
+            transform: (data) => ({
+                message: 'success',
+                number: data.number,
+                people: data.people.map(p => ({
+                    name: p.name,
+                    craft: p.spacecraft || p.craft || 'ISS',
+                    country: p.country || null,
+                    flagCode: p.flag_code || null,
+                    agency: p.agency || null,
+                    position: p.position || null,
+                    launchedTimestamp: p.launched || null,
+                    daysInSpace: p.days_in_space || null,
+                    image: p.image || null,
+                    bioUrl: p.url || null,
+                    twitter: p.twitter || null,
+                    instagram: p.instagram || null,
+                    isIss: p.iss !== undefined ? p.iss : true
+                }))
+            })
+        },
+        {
+            url: 'http://api.open-notify.org/astros.json',
+            transform: (data) => ({
+                message: 'success',
+                number: data.number,
+                people: data.people.map(p => ({
+                    name: p.name,
+                    craft: p.craft || 'ISS',
+                    country: null,
+                    flagCode: null,
+                    agency: null,
+                    position: null,
+                    launchedTimestamp: null,
+                    daysInSpace: null,
+                    image: null,
+                    bioUrl: null,
+                    twitter: null,
+                    instagram: null,
+                    isIss: p.craft === 'ISS'
+                }))
+            })
+        }
+    ];
+
+    let lastError = null;
+
+    for (const endpoint of apiEndpoints) {
+        try {
+            const response = await fetch(endpoint.url);
+
+            if (!response.ok) {
+                throw new Error(`API returned status: ${response.status}`);
+            }
+
+            const rawData = await response.json();
+            const data = endpoint.transform(rawData);
+
+            if (data.message !== 'success' && !data.people) {
+                throw new Error('API returned unsuccessful response');
+            }
+
+            crewData = data;
+            return data;
+        } catch (error) {
+            console.warn(`Failed to fetch from ${endpoint.url}:`, error.message);
+            lastError = error;
+            continue;
+        }
+    }
+
+    console.error('All crew data APIs failed:', lastError);
+    throw lastError;
+}
+
+// Render crew members in the panel
+function renderCrewList(data) {
+    const crewList = document.getElementById('crew-list');
+    const crewCount = document.querySelector('.crew-count');
+    const crewUpdated = document.getElementById('crew-updated');
+
+    if (!crewList) return;
+
+    // Filter for ISS crew only
+    const issCrew = data.people.filter(person => person.isIss || person.craft === 'ISS');
+    const otherCrew = data.people.filter(person => !person.isIss && person.craft !== 'ISS');
+
+    // Update crew count badge
+    if (crewCount) {
+        crewCount.textContent = issCrew.length;
+    }
+
+    // Update timestamp
+    if (crewUpdated) {
+        crewUpdated.textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
+    }
+
+    // Build crew list HTML
+    let html = '';
+
+    // ISS Crew section
+    if (issCrew.length > 0) {
+        issCrew.forEach(person => {
+            html += createCrewMemberCard(person);
+        });
+    }
+
+    // Other spacecraft section (if any)
+    if (otherCrew.length > 0) {
+        html += `<div class="crew-section-divider">Other Spacecraft</div>`;
+        otherCrew.forEach(person => {
+            html += createCrewMemberCard(person);
+        });
+    }
+
+    crewList.innerHTML = html;
+}
+
+// Convert country code to flag emoji
+function getFlagEmoji(countryCode) {
+    if (!countryCode || countryCode.length !== 2) return '';
+    const codePoints = countryCode
+        .toUpperCase()
+        .split('')
+        .map(char => 127397 + char.charCodeAt(0));
+    return String.fromCodePoint(...codePoints);
+}
+
+// Format days in space
+function formatDaysInSpace(days) {
+    if (!days) return null;
+    if (days < 30) return `${days} days`;
+    if (days < 365) return `${Math.floor(days / 30)} months`;
+    const years = Math.floor(days / 365);
+    const remainingMonths = Math.floor((days % 365) / 30);
+    if (remainingMonths === 0) return `${years}y`;
+    return `${years}y ${remainingMonths}m`;
+}
+
+// Format launch date
+function formatLaunchDate(timestamp) {
+    if (!timestamp) return null;
+    const date = new Date(timestamp * 1000);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+// Create HTML for a single crew member card
+function createCrewMemberCard(person) {
+    // Determine icon based on craft
+    const craftIcon = person.craft === 'ISS' ? 'fa-satellite' : 'fa-rocket';
+
+    // Build avatar - use image if available
+    const avatarHtml = person.image
+        ? `<img src="${escapeHtml(person.image)}" alt="${escapeHtml(person.name)}" class="crew-avatar-img" onerror="this.parentElement.innerHTML='<i class=\\'fas fa-user-astronaut\\'></i>'">`
+        : `<i class="fas fa-user-astronaut"></i>`;
+
+    // Build country/flag display
+    const flagEmoji = getFlagEmoji(person.flagCode);
+    const countryDisplay = person.country
+        ? `<span class="crew-country">${flagEmoji} ${escapeHtml(person.country)}</span>`
+        : '';
+
+    // Build position/role display
+    const positionDisplay = person.position
+        ? `<div class="crew-position">${escapeHtml(person.position)}</div>`
+        : '';
+
+    // Build agency badge
+    const agencyDisplay = person.agency
+        ? `<span class="crew-agency">${escapeHtml(person.agency)}</span>`
+        : '';
+
+    // Build time in space stat
+    const daysDisplay = formatDaysInSpace(person.daysInSpace);
+    const timeInSpaceHtml = daysDisplay
+        ? `<div class="crew-stat"><i class="fas fa-clock"></i> ${daysDisplay} in space</div>`
+        : '';
+
+    // Build launch date stat
+    const launchDate = formatLaunchDate(person.launchedTimestamp);
+    const launchHtml = launchDate
+        ? `<div class="crew-stat"><i class="fas fa-rocket"></i> Launched ${launchDate}</div>`
+        : '';
+
+    // Build social links
+    let socialHtml = '';
+    if (person.twitter || person.instagram || person.bioUrl) {
+        socialHtml = '<div class="crew-social">';
+        if (person.twitter) {
+            socialHtml += `<a href="https://twitter.com/${escapeHtml(person.twitter)}" target="_blank" rel="noopener" title="Twitter"><i class="fab fa-twitter"></i></a>`;
+        }
+        if (person.instagram) {
+            socialHtml += `<a href="https://instagram.com/${escapeHtml(person.instagram)}" target="_blank" rel="noopener" title="Instagram"><i class="fab fa-instagram"></i></a>`;
+        }
+        if (person.bioUrl) {
+            socialHtml += `<a href="${escapeHtml(person.bioUrl)}" target="_blank" rel="noopener" title="Biography"><i class="fas fa-external-link-alt"></i></a>`;
+        }
+        socialHtml += '</div>';
+    }
+
+    return `
+        <div class="crew-member">
+            <div class="crew-member-header">
+                <div class="crew-avatar">
+                    ${avatarHtml}
+                </div>
+                <div class="crew-member-info">
+                    <h3 class="crew-name">${escapeHtml(person.name)}</h3>
+                    ${positionDisplay}
+                    <div class="crew-meta">
+                        ${countryDisplay}
+                        ${agencyDisplay}
+                    </div>
+                </div>
+            </div>
+            <div class="crew-details">
+                ${timeInSpaceHtml}
+                ${launchHtml}
+            </div>
+            ${socialHtml}
+        </div>
+    `;
+}
+
+// Escape HTML to prevent XSS
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Show error state in crew panel
+function showCrewError(message) {
+    const crewList = document.getElementById('crew-list');
+    if (!crewList) return;
+
+    crewList.innerHTML = `
+        <div class="crew-error">
+            <i class="fas fa-exclamation-triangle"></i>
+            <p>${escapeHtml(message)}</p>
+            <button onclick="initCrewPanel()" class="retry-btn" style="
+                margin-top: 1rem;
+                padding: 0.5rem 1rem;
+                background: #0a3872;
+                border: 1px solid #1e5799;
+                color: #7fb1ff;
+                border-radius: 4px;
+                cursor: pointer;
+            ">
+                <i class="fas fa-redo"></i> Retry
+            </button>
+        </div>
+    `;
+}
+
+// Toggle crew panel open/closed
+function toggleCrewPanel() {
+    const panel = document.getElementById('crew-panel');
+    if (panel) {
+        panel.classList.toggle('open');
+    }
+}
+
+// Initialize crew panel
+async function initCrewPanel() {
+    const crewList = document.getElementById('crew-list');
+    if (crewList) {
+        crewList.innerHTML = `
+            <div class="crew-loading">
+                <i class="fas fa-spinner fa-spin"></i> Loading crew data...
+            </div>
+        `;
+    }
+
+    try {
+        const data = await fetchCrewData();
+        renderCrewList(data);
+    } catch (error) {
+        showCrewError('Unable to load crew data. Please try again.');
+    }
+}
+
+// Set up crew panel event listeners
+function setupCrewPanelEvents() {
+    const toggleBtn = document.getElementById('crew-toggle');
+    const closeBtn = document.getElementById('crew-close');
+    const panel = document.getElementById('crew-panel');
+
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', toggleCrewPanel);
+    }
+
+    if (closeBtn) {
+        closeBtn.addEventListener('click', toggleCrewPanel);
+    }
+
+    // Close panel when clicking outside (optional)
+    document.addEventListener('click', (e) => {
+        if (panel && panel.classList.contains('open')) {
+            if (!panel.contains(e.target) && !toggleBtn.contains(e.target)) {
+                panel.classList.remove('open');
+            }
+        }
+    });
+
+    // Close panel with Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && panel && panel.classList.contains('open')) {
+            panel.classList.remove('open');
+        }
+    });
+}
 
 // Add pulsing effect to ISS icon
 function addPulsingEffect() {
@@ -371,16 +694,23 @@ function handleResize() {
 document.addEventListener('DOMContentLoaded', function() {
     // Handle initial size setup
     handleResize();
-    
+
     // Add pulsing effect to the ISS icon
     addPulsingEffect();
-    
+
     // Initialize ISS tracking
     updateISS();
-    
+
     // Set interval to update ISS position every 10 seconds
     setInterval(updateISS, 10000);
-    
+
     // Add window resize event listener
     window.addEventListener('resize', handleResize);
+
+    // Initialize crew panel
+    setupCrewPanelEvents();
+    initCrewPanel();
+
+    // Refresh crew data every 5 minutes (crew changes are rare)
+    setInterval(initCrewPanel, 300000);
 });

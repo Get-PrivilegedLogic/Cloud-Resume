@@ -355,3 +355,337 @@ html, body, #map-container {
   width: 100%;
   height: 100%;
 }
+
+/* ================================================
+   CREW PANEL STYLES
+   ================================================ */
+
+/* Toggle button - floating action button */
+.crew-toggle {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #0a3872 0%, #00112b 100%);
+  border: 2px solid #1e5799;
+  color: #7fb1ff;
+  font-size: 1.2rem;
+  cursor: pointer;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 20px rgba(0, 60, 120, 0.5), 0 0 15px rgba(72, 169, 255, 0.3);
+  transition: all 0.3s ease;
+}
+
+.crew-toggle:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 25px rgba(0, 60, 120, 0.7), 0 0 20px rgba(72, 169, 255, 0.5);
+  color: #fff;
+}
+
+.crew-toggle .crew-count {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background: #ff6b35;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Roboto Mono', monospace;
+}
+
+/* Crew panel - sliding drawer */
+.crew-panel {
+  position: fixed;
+  top: 0;
+  right: -380px;
+  width: 350px;
+  height: 100vh;
+  background: linear-gradient(180deg, rgba(0, 17, 43, 0.98) 0%, rgba(0, 13, 36, 0.98) 100%);
+  border-left: 1px solid #0e4686;
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+  transition: right 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: -5px 0 30px rgba(0, 0, 0, 0.5);
+}
+
+.crew-panel.open {
+  right: 0;
+}
+
+.crew-panel-header {
+  padding: 1rem 1.2rem;
+  background: rgba(10, 56, 114, 0.5);
+  border-bottom: 1px solid #0e4686;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.crew-panel-header h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #fff;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.crew-panel-header h2 i {
+  color: #7fb1ff;
+}
+
+.crew-close {
+  background: transparent;
+  border: none;
+  color: #7fb1ff;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 0.3rem;
+  transition: color 0.2s ease;
+}
+
+.crew-close:hover {
+  color: #ff6b35;
+}
+
+/* Crew list */
+.crew-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+}
+
+.crew-loading {
+  text-align: center;
+  color: #7fb1ff;
+  padding: 2rem;
+  font-family: 'Roboto Mono', monospace;
+}
+
+.crew-loading i {
+  margin-right: 0.5rem;
+}
+
+/* Individual crew member card */
+.crew-member {
+  background: rgba(14, 70, 134, 0.2);
+  border: 1px solid rgba(30, 87, 153, 0.5);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 0.8rem;
+  transition: all 0.2s ease;
+}
+
+.crew-member:hover {
+  background: rgba(14, 70, 134, 0.35);
+  border-color: #1e5799;
+  transform: translateX(-3px);
+}
+
+.crew-member-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.8rem;
+}
+
+.crew-avatar {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #0a3872 0%, #1e5799 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #7fb1ff;
+  font-size: 1.2rem;
+  border: 2px solid #1e5799;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.crew-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.crew-member-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.crew-name {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #fff;
+  margin: 0 0 0.15rem 0;
+  line-height: 1.2;
+}
+
+.crew-position {
+  font-size: 0.75rem;
+  color: #48a9ff;
+  margin-bottom: 0.3rem;
+}
+
+.crew-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.crew-country {
+  font-size: 0.7rem;
+  color: #a0c4ff;
+}
+
+.crew-agency {
+  font-size: 0.65rem;
+  color: #7fb1ff;
+  background: rgba(30, 87, 153, 0.4);
+  padding: 0.15rem 0.4rem;
+  border-radius: 3px;
+  font-family: 'Roboto Mono', monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.03rem;
+}
+
+.crew-details {
+  margin-top: 0.6rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid rgba(30, 87, 153, 0.3);
+}
+
+.crew-details:empty {
+  display: none;
+}
+
+.crew-stat {
+  font-size: 0.72rem;
+  color: #7fb1ff;
+  margin-bottom: 0.3rem;
+  font-family: 'Roboto Mono', monospace;
+}
+
+.crew-stat i {
+  width: 14px;
+  margin-right: 0.4rem;
+  color: #48a9ff;
+}
+
+.crew-social {
+  margin-top: 0.6rem;
+  display: flex;
+  gap: 0.6rem;
+}
+
+.crew-social a {
+  color: #7fb1ff;
+  font-size: 0.9rem;
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.crew-social a:hover {
+  color: #48a9ff;
+  transform: scale(1.15);
+}
+
+.crew-craft {
+  font-size: 0.75rem;
+  color: #7fb1ff;
+  font-family: 'Roboto Mono', monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.05rem;
+}
+
+.crew-craft i {
+  margin-right: 0.3rem;
+}
+
+/* Crew panel footer */
+.crew-panel-footer {
+  padding: 0.8rem 1.2rem;
+  background: rgba(10, 56, 114, 0.3);
+  border-top: 1px solid #0e4686;
+  font-size: 0.7rem;
+  color: #7fb1ff;
+  font-family: 'Roboto Mono', monospace;
+  text-align: center;
+}
+
+/* Error state */
+.crew-error {
+  text-align: center;
+  color: #ff6b6b;
+  padding: 2rem 1rem;
+}
+
+.crew-error i {
+  font-size: 2rem;
+  margin-bottom: 0.8rem;
+  display: block;
+}
+
+.crew-error p {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+/* Section divider for other spacecraft */
+.crew-section-divider {
+  font-size: 0.7rem;
+  color: #7fb1ff;
+  text-transform: uppercase;
+  letter-spacing: 0.1rem;
+  font-family: 'Roboto Mono', monospace;
+  padding: 0.8rem 0 0.5rem;
+  margin-top: 0.5rem;
+  border-top: 1px solid rgba(30, 87, 153, 0.3);
+}
+
+/* Scrollbar styling for crew list */
+.crew-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.crew-list::-webkit-scrollbar-track {
+  background: rgba(0, 13, 36, 0.5);
+}
+
+.crew-list::-webkit-scrollbar-thumb {
+  background: #1e5799;
+  border-radius: 3px;
+}
+
+.crew-list::-webkit-scrollbar-thumb:hover {
+  background: #2d7bd9;
+}
+
+/* Mobile adjustments for crew panel */
+@media screen and (max-width: 768px) {
+  .crew-panel {
+    width: 100%;
+    right: -100%;
+  }
+
+  .crew-toggle {
+    bottom: 15px;
+    right: 15px;
+    width: 50px;
+    height: 50px;
+  }
+}

@@ -38,7 +38,31 @@
         </div>
       </div>
     </div>
-  </div>  <div id="map-container">
+  </div>  <!-- Crew Panel Toggle Button -->
+  <button id="crew-toggle" class="crew-toggle" aria-label="Toggle crew panel">
+    <i class="fas fa-users"></i>
+    <span class="crew-count">--</span>
+  </button>
+
+  <!-- Crew Information Panel -->
+  <div id="crew-panel" class="crew-panel">
+    <div class="crew-panel-header">
+      <h2><i class="fas fa-user-astronaut"></i> Crew Aboard ISS</h2>
+      <button id="crew-close" class="crew-close" aria-label="Close crew panel">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div id="crew-list" class="crew-list">
+      <div class="crew-loading">
+        <i class="fas fa-spinner fa-spin"></i> Loading crew data...
+      </div>
+    </div>
+    <div class="crew-panel-footer">
+      <span id="crew-updated">Last updated: --:--:--</span>
+    </div>
+  </div>
+
+  <div id="map-container">
     <div class="world-map-background"></div>
     <div class="grid-overlay"></div>
     <div id="iss-icon"></div>
