@@ -38,7 +38,55 @@
         </div>
       </div>
     </div>
-  </div>  <!-- Crew Panel Toggle Button -->
+  </div>  <!-- Live Feed Toggle Button -->
+  <button id="livefeed-toggle" class="livefeed-toggle" aria-label="Toggle live feed">
+    <i class="fas fa-video"></i>
+  </button>
+
+  <!-- Live Feed Panel -->
+  <div id="livefeed-panel" class="livefeed-panel">
+    <div class="livefeed-panel-header">
+      <h2><i class="fas fa-satellite-dish"></i> Live ISS View</h2>
+      <button id="livefeed-close" class="livefeed-close" aria-label="Close live feed">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div class="livefeed-content">
+      <div class="livefeed-wrapper">
+        <iframe
+          id="livefeed-iframe"
+          src="about:blank"
+          data-src="https://ustream.tv/embed/17074538?html5ui=1&autoplay=true&mute=true"
+          title="Live ISS Stream - NASA TV"
+          frameborder="0"
+          allow="autoplay; fullscreen"
+          allowfullscreen>
+        </iframe>
+      </div>
+      <div class="livefeed-info">
+        <p><i class="fas fa-info-circle"></i> Live HD views from the ISS. Screen may show "off air" during signal loss or scheduled breaks.</p>
+      </div>
+      <div class="livefeed-links">
+        <span class="livefeed-links-label">Watch live on:</span>
+        <a href="https://www.nasa.gov/nasatv" target="_blank" rel="noopener" class="livefeed-link-btn">
+          <i class="fas fa-satellite-dish"></i> NASA TV
+        </a>
+        <a href="https://www.youtube.com/@NASA/live" target="_blank" rel="noopener" class="livefeed-link-btn">
+          <i class="fab fa-youtube"></i> YouTube
+        </a>
+        <a href="https://isslivenow.com/" target="_blank" rel="noopener" class="livefeed-link-btn">
+          <i class="fas fa-globe"></i> ISS Live Now
+        </a>
+      </div>
+    </div>
+    <div class="livefeed-panel-footer">
+      <a href="https://www.nasa.gov/live" target="_blank" rel="noopener">
+        <i class="fas fa-external-link-alt"></i> NASA Live
+      </a>
+    </div>
+  </div>
+
+  <!-- Crew Panel Toggle Button -->
   <button id="crew-toggle" class="crew-toggle" aria-label="Toggle crew panel">
     <i class="fas fa-users"></i>
     <span class="crew-count">--</span>
@@ -64,6 +112,7 @@
 
   <div id="map-container">
     <div class="world-map-background"></div>
+    <div class="day-night-overlay"></div>
     <div class="grid-overlay"></div>
     <div id="iss-icon"></div>
     <div class="orbit-path"></div>

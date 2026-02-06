@@ -327,6 +327,203 @@ function setupCrewPanelEvents() {
     });
 }
 
+// ================================================
+// LIVE FEED PANEL FUNCTIONALITY
+// ================================================
+
+let liveFeedLoaded = false;
+
+// Toggle live feed panel
+function toggleLiveFeedPanel() {
+    const panel = document.getElementById('livefeed-panel');
+    if (panel) {
+        const isOpening = !panel.classList.contains('open');
+        panel.classList.toggle('open');
+
+        // Lazy load iframe when panel opens for the first time
+        if (isOpening && !liveFeedLoaded) {
+            loadLiveFeed();
+        }
+    }
+}
+
+// Load the live feed iframe (lazy loading to save bandwidth)
+function loadLiveFeed() {
+    const iframe = document.getElementById('livefeed-iframe');
+    if (iframe && iframe.dataset.src) {
+        iframe.src = iframe.dataset.src;
+        liveFeedLoaded = true;
+    }
+}
+
+// Set up live feed panel event listeners
+function setupLiveFeedEvents() {
+    const toggleBtn = document.getElementById('livefeed-toggle');
+    const closeBtn = document.getElementById('livefeed-close');
+    const panel = document.getElementById('livefeed-panel');
+
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', toggleLiveFeedPanel);
+    }
+
+    if (closeBtn) {
+        closeBtn.addEventListener('click', toggleLiveFeedPanel);
+    }
+
+    // Close panel when clicking outside
+    document.addEventListener('click', (e) => {
+        if (panel && panel.classList.contains('open')) {
+            if (!panel.contains(e.target) && !toggleBtn.contains(e.target)) {
+                panel.classList.remove('open');
+            }
+        }
+    });
+
+    // Close panel with Escape key (handled globally with crew panel)
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && panel && panel.classList.contains('open')) {
+            panel.classList.remove('open');
+        }
+    });
+}
+
+// ================================================
+// DAY/NIGHT TERMINATOR FUNCTIONALITY
+// ================================================
+
+// Calculate the sun's position (simplified solar calculations)
+function getSunPosition(date) {
+    const dayOfYear = getDayOfYear(date);
+    const hours = date.getUTCHours() + date.getUTCMinutes() / 60;
+
+    // Solar declination (angle of sun relative to equator)
+    // Varies from +23.45° (summer solstice) to -23.45° (winter solstice)
+    const declination = -23.45 * Math.cos((360 / 365) * (dayOfYear + 10) * (Math.PI / 180));
+
+    // Hour angle - where the sun is in its daily path
+    // At noon UTC, sun is over 0° longitude
+    const hourAngle = (hours - 12) * 15; // 15° per hour
+
+    // Subsolar point (where sun is directly overhead)
+    const sunLat = declination;
+    const sunLng = -hourAngle;
+
+    return { lat: sunLat, lng: sunLng };
+}
+
+// Get day of year (1-365)
+function getDayOfYear(date) {
+    const start = new Date(date.getFullYear(), 0, 0);
+    const diff = date - start;
+    const oneDay = 1000 * 60 * 60 * 24;
+    return Math.floor(diff / oneDay);
+}
+
+// Calculate terminator points (the line where day meets night)
+function calculateTerminator(date) {
+    const sunPos = getSunPosition(date);
+    const points = [];
+
+    // Generate points along the terminator
+    // The terminator is a great circle 90° from the subsolar point
+    for (let lng = -180; lng <= 180; lng += 2) {
+        // Calculate latitude of terminator at this longitude
+        const lngDiff = (lng - sunPos.lng) * (Math.PI / 180);
+        const sunLatRad = sunPos.lat * (Math.PI / 180);
+
+        // Terminator latitude calculation
+        const terminatorLat = Math.atan(-Math.cos(lngDiff) / Math.tan(sunLatRad)) * (180 / Math.PI);
+
+        if (!isNaN(terminatorLat) && terminatorLat >= -90 && terminatorLat <= 90) {
+            points.push({ lat: terminatorLat, lng: lng });
+        }
+    }
+
+    return { points, sunPos };
+}
+
+// Draw the day/night overlay on the map
+function updateDayNightOverlay() {
+    const overlay = document.querySelector('.day-night-overlay');
+    if (!overlay) return;
+
+    const now = new Date();
+    const { points, sunPos } = calculateTerminator(now);
+
+    // Create or get SVG
+    let svg = overlay.querySelector('svg');
+    if (!svg) {
+        svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('width', '100%');
+        svg.setAttribute('height', '100%');
+        svg.setAttribute('preserveAspectRatio', 'none');
+        svg.setAttribute('viewBox', '0 0 100 100');
+        overlay.appendChild(svg);
+    }
+
+    // Create the night polygon
+    let nightPath = svg.querySelector('.night-area');
+    if (!nightPath) {
+        nightPath = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+        nightPath.setAttribute('class', 'night-area');
+        nightPath.setAttribute('fill', 'rgba(0, 0, 20, 0.4)');
+        svg.appendChild(nightPath);
+    }
+
+    // Create the terminator line
+    let terminatorLine = svg.querySelector('.terminator-line');
+    if (!terminatorLine) {
+        terminatorLine = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+        terminatorLine.setAttribute('class', 'terminator-line');
+        terminatorLine.setAttribute('fill', 'none');
+        terminatorLine.setAttribute('stroke', 'rgba(255, 200, 100, 0.6)');
+        terminatorLine.setAttribute('stroke-width', '0.3');
+        terminatorLine.setAttribute('stroke-dasharray', '1, 0.5');
+        svg.appendChild(terminatorLine);
+    }
+
+    // Convert terminator points to SVG coordinates
+    const svgPoints = points.map(p => {
+        const pos = latLngToPosition(p.lat, p.lng);
+        return `${pos.x},${pos.y}`;
+    });
+
+    // Set terminator line
+    terminatorLine.setAttribute('points', svgPoints.join(' '));
+
+    // Determine which side is night (opposite of sun)
+    // If sun is in northern hemisphere, night polygon goes south of terminator in that hemisphere
+    const isNorthernHemisphereSummer = sunPos.lat > 0;
+
+    // Build night polygon - terminator line plus edges
+    let polygonPoints = [];
+
+    if (isNorthernHemisphereSummer) {
+        // Night is on the south side of the terminator
+        // Start from bottom-left, go along bottom, then up terminator, back along top if needed
+        polygonPoints.push('0,100'); // Bottom-left
+        polygonPoints.push('100,100'); // Bottom-right
+
+        // Add terminator points from right to left (reversed)
+        for (let i = points.length - 1; i >= 0; i--) {
+            const pos = latLngToPosition(points[i].lat, points[i].lng);
+            polygonPoints.push(`${pos.x},${pos.y}`);
+        }
+    } else {
+        // Night is on the north side of the terminator
+        polygonPoints.push('0,0'); // Top-left
+        polygonPoints.push('100,0'); // Top-right
+
+        // Add terminator points from right to left (reversed)
+        for (let i = points.length - 1; i >= 0; i--) {
+            const pos = latLngToPosition(points[i].lat, points[i].lng);
+            polygonPoints.push(`${pos.x},${pos.y}`);
+        }
+    }
+
+    nightPath.setAttribute('points', polygonPoints.join(' '));
+}
+
 // Add pulsing effect to ISS icon
 function addPulsingEffect() {
     const issIcon = document.getElementById('iss-icon');
@@ -713,4 +910,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Refresh crew data every 5 minutes (crew changes are rare)
     setInterval(initCrewPanel, 300000);
+
+    // Initialize live feed panel
+    setupLiveFeedEvents();
+
+    // Initialize day/night terminator
+    updateDayNightOverlay();
+
+    // Update terminator every minute (it moves slowly)
+    setInterval(updateDayNightOverlay, 60000);
 });
