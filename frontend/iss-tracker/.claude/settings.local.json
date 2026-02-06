@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(tree:*)",
+      "Bash(dir /s /b \"C:\\\\Users\\\\bradh\\\\Documents\\\\GitHub\\\\Cloud-Resume\\\\frontend\\\\iss-tracker\")",
+      "WebFetch(domain:corquaid.github.io)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "WebSearch",
+      "Bash(git add:*)"
+    ]
+  }
+}
