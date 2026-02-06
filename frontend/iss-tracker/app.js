@@ -1,17 +1,324 @@
-// ISS Tracker - Static map version
+// ISS Tracker - Leaflet Map Version
 
-// Global variables
+// ================================================
+// GLOBAL VARIABLES
+// ================================================
+
+let map = null;
+let issMarker = null;
+let orbitPath = null;
 let orbitPathPoints = [];
 const maxOrbitPoints = 100;
+let terminator = null;
 let crewData = null;
+let liveFeedLoaded = false;
+let currentLocation = null;
+
+// Custom ISS Icon
+const issIcon = L.divIcon({
+    className: 'iss-marker',
+    html: `<div class="iss-marker-inner">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/d/d0/International_Space_Station.svg" alt="ISS" />
+    </div>`,
+    iconSize: [50, 50],
+    iconAnchor: [25, 25]
+});
+
+// ================================================
+// MAP INITIALIZATION
+// ================================================
+
+function initMap() {
+    // Create map centered on 0,0 with world view
+    map = L.map('map-container', {
+        center: [20, 0],
+        zoom: 2,
+        minZoom: 2,
+        maxZoom: 8,
+        worldCopyJump: true,
+        zoomControl: true
+    });
+
+    // Add satellite imagery layer (ESRI)
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Tiles &copy; Esri',
+        maxZoom: 18
+    }).addTo(map);
+
+    // Add a semi-transparent overlay for better contrast
+    L.tileLayer('https://stamen-tiles-{s}.a.ssl.fastly.net/toner-labels/{z}/{x}/{y}{r}.png', {
+        attribution: '',
+        subdomains: 'abcd',
+        maxZoom: 18,
+        opacity: 0.4
+    }).addTo(map);
+
+    // Initialize day/night terminator
+    terminator = L.terminator({
+        fillColor: '#000020',
+        fillOpacity: 0.4,
+        color: '#ffc864',
+        weight: 1
+    }).addTo(map);
+
+    // Update terminator every minute
+    setInterval(() => {
+        terminator.setTime();
+    }, 60000);
+
+    // Initialize orbit path polyline
+    orbitPath = L.polyline([], {
+        color: '#ff9500',
+        weight: 3,
+        opacity: 0.8,
+        dashArray: '10, 6',
+        className: 'orbit-path-line'
+    }).addTo(map);
+
+    // Add map click handler to show coordinates
+    map.on('click', (e) => {
+        const { lat, lng } = e.latlng;
+        L.popup()
+            .setLatLng(e.latlng)
+            .setContent(`<strong>Coordinates</strong><br>Lat: ${lat.toFixed(4)}°<br>Lng: ${lng.toFixed(4)}°`)
+            .openOn(map);
+    });
+}
+
+// ================================================
+// ISS TRACKING
+// ================================================
+
+async function updateISS() {
+    const statusIndicator = document.getElementById('status-indicator');
+    statusIndicator.innerHTML = '⏳';
+    statusIndicator.title = 'Updating ISS position...';
+
+    try {
+        const apiUrl = 'https://api.wheretheiss.at/v1/satellites/25544';
+        const response = await fetch(apiUrl, {
+            method: 'GET',
+            headers: { 'Accept': 'application/json' },
+            cache: 'no-cache'
+        });
+
+        if (!response.ok) {
+            throw new Error(`API returned status: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        const lat = parseFloat(data.latitude);
+        const lng = parseFloat(data.longitude);
+        const altitude = parseFloat(data.altitude);
+        const velocity = parseFloat(data.velocity);
+        const timestamp = new Date().toLocaleTimeString();
+
+        // Validate coordinates
+        if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+            throw new Error(`Invalid coordinates received: lat=${lat}, lng=${lng}`);
+        }
+
+        // Update status indicator
+        statusIndicator.innerHTML = '✅';
+        statusIndicator.title = `Last updated: ${timestamp}`;
+
+        // Update info header
+        updateInfoHeader(lat, lng, altitude, velocity, timestamp);
+
+        // Update ISS marker position
+        updateISSMarker(lat, lng);
+
+        // Update orbit path
+        updateOrbitPath(lat, lng);
+
+        // Get and display current location
+        fetchCurrentLocation(lat, lng);
+
+    } catch (error) {
+        console.error("Failed to fetch ISS position:", error);
+        statusIndicator.innerHTML = '❌';
+        statusIndicator.title = 'Error updating ISS position. Will retry.';
+    }
+}
+
+function updateISSMarker(lat, lng) {
+    if (!issMarker) {
+        issMarker = L.marker([lat, lng], {
+            icon: issIcon,
+            zIndexOffset: 1000
+        }).addTo(map);
+
+        // Add popup to ISS marker
+        issMarker.bindPopup(() => {
+            const locText = currentLocation ? `<br><strong>Over:</strong> ${currentLocation}` : '';
+            return `<strong>International Space Station</strong>${locText}<br><em>Click to follow</em>`;
+        });
+
+        issMarker.on('click', () => {
+            map.setView([lat, lng], map.getZoom(), { animate: true });
+        });
+    } else {
+        issMarker.setLatLng([lat, lng]);
+    }
+}
+
+function updateOrbitPath(lat, lng) {
+    // Add new point
+    orbitPathPoints.push([lat, lng]);
+
+    // Keep only last maxOrbitPoints
+    if (orbitPathPoints.length > maxOrbitPoints) {
+        orbitPathPoints.shift();
+    }
+
+    // Handle international date line crossing
+    const segments = [];
+    let currentSegment = [];
+
+    for (let i = 0; i < orbitPathPoints.length; i++) {
+        const point = orbitPathPoints[i];
+
+        if (i > 0) {
+            const prevPoint = orbitPathPoints[i - 1];
+            const lngDiff = Math.abs(point[1] - prevPoint[1]);
+
+            // If longitude jump is > 180, we crossed the date line
+            if (lngDiff > 180) {
+                if (currentSegment.length > 0) {
+                    segments.push(currentSegment);
+                }
+                currentSegment = [point];
+                continue;
+            }
+        }
+
+        currentSegment.push(point);
+    }
+
+    if (currentSegment.length > 0) {
+        segments.push(currentSegment);
+    }
+
+    // Update polyline with segments (use first segment for main line)
+    if (segments.length > 0) {
+        orbitPath.setLatLngs(segments);
+    }
+}
+
+// ================================================
+// LOCATION DISPLAY
+// ================================================
+
+async function fetchCurrentLocation(lat, lng) {
+    try {
+        // Use reverse geocoding to get location name
+        const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=5&accept-language=en`,
+            { headers: { 'User-Agent': 'ISS-Tracker-CloudCrafted' } }
+        );
+
+        if (response.ok) {
+            const data = await response.json();
+
+            if (data.address) {
+                // Build location string
+                const parts = [];
+                if (data.address.country) {
+                    parts.push(data.address.country);
+                } else if (data.address.ocean) {
+                    parts.push(data.address.ocean);
+                } else if (data.address.sea) {
+                    parts.push(data.address.sea);
+                }
+
+                currentLocation = parts.length > 0 ? parts.join(', ') : 'International Waters';
+            } else {
+                currentLocation = getOceanFromCoordinates(lat, lng);
+            }
+        } else {
+            currentLocation = getOceanFromCoordinates(lat, lng);
+        }
+
+        updateLocationDisplay();
+    } catch (error) {
+        currentLocation = getOceanFromCoordinates(lat, lng);
+        updateLocationDisplay();
+    }
+}
+
+// Fallback ocean detection based on coordinates
+function getOceanFromCoordinates(lat, lng) {
+    if (lng > -30 && lng < 70 && lat > -40 && lat < 70) {
+        if (lat < 0) return 'South Atlantic Ocean';
+        return 'North Atlantic Ocean';
+    }
+    if (lng >= 70 && lng <= 180 || lng >= -180 && lng < -100) {
+        if (lat < 0) return 'South Pacific Ocean';
+        return 'North Pacific Ocean';
+    }
+    if (lng >= 20 && lng <= 150 && lat < 30 && lat > -60) {
+        return 'Indian Ocean';
+    }
+    if (lat < -60) return 'Southern Ocean';
+    if (lat > 66) return 'Arctic Ocean';
+    return 'Over Ocean';
+}
+
+function updateLocationDisplay() {
+    let locationEl = document.getElementById('iss-location');
+    if (!locationEl) {
+        // Create location display if it doesn't exist
+        const orbitalData = document.querySelector('.orbital-data');
+        if (orbitalData) {
+            const locationGroup = document.createElement('div');
+            locationGroup.className = 'data-group location-group';
+            locationGroup.innerHTML = `
+                <div class="data-label">Location</div>
+                <div id="iss-location" class="data-value location-value">--</div>
+            `;
+            orbitalData.appendChild(locationGroup);
+            locationEl = document.getElementById('iss-location');
+        }
+    }
+
+    if (locationEl && currentLocation) {
+        locationEl.textContent = currentLocation;
+        locationEl.title = currentLocation;
+    }
+}
+
+// ================================================
+// INFO HEADER
+// ================================================
+
+function updateInfoHeader(lat, lng, altitude, velocity, timestamp) {
+    const updateTimeElement = document.getElementById('update-time');
+    const latElement = document.getElementById('iss-latitude');
+    const lngElement = document.getElementById('iss-longitude');
+    const altElement = document.getElementById('iss-altitude');
+    const velElement = document.getElementById('iss-velocity');
+
+    if (updateTimeElement) updateTimeElement.textContent = timestamp;
+    if (latElement) latElement.textContent = lat.toFixed(2) + '°';
+    if (lngElement) lngElement.textContent = lng.toFixed(2) + '°';
+
+    if (altElement && altitude !== undefined) {
+        const altitudeMiles = (altitude * 0.621371).toFixed(0);
+        altElement.textContent = altitudeMiles + ' mi';
+    }
+
+    if (velElement && velocity !== undefined) {
+        const velocityMph = (velocity * 0.621371).toFixed(0);
+        velElement.textContent = velocityMph + ' mph';
+    }
+}
 
 // ================================================
 // CREW PANEL FUNCTIONALITY
 // ================================================
 
-// Fetch crew data with HTTPS fallback chain
 async function fetchCrewData() {
-    // HTTPS-compatible APIs (primary and fallback)
     const apiEndpoints = [
         {
             url: 'https://corquaid.github.io/international-space-station-APIs/JSON/people-in-space.json',
@@ -43,53 +350,31 @@ async function fetchCrewData() {
                 people: data.people.map(p => ({
                     name: p.name,
                     craft: p.craft || 'ISS',
-                    country: null,
-                    flagCode: null,
-                    agency: null,
-                    position: null,
-                    launchedTimestamp: null,
-                    daysInSpace: null,
-                    image: null,
-                    bioUrl: null,
-                    twitter: null,
-                    instagram: null,
+                    country: null, flagCode: null, agency: null, position: null,
+                    launchedTimestamp: null, daysInSpace: null, image: null,
+                    bioUrl: null, twitter: null, instagram: null,
                     isIss: p.craft === 'ISS'
                 }))
             })
         }
     ];
 
-    let lastError = null;
-
     for (const endpoint of apiEndpoints) {
         try {
             const response = await fetch(endpoint.url);
-
-            if (!response.ok) {
-                throw new Error(`API returned status: ${response.status}`);
-            }
-
+            if (!response.ok) throw new Error(`API returned status: ${response.status}`);
             const rawData = await response.json();
             const data = endpoint.transform(rawData);
-
-            if (data.message !== 'success' && !data.people) {
-                throw new Error('API returned unsuccessful response');
-            }
-
+            if (data.message !== 'success' && !data.people) throw new Error('Invalid response');
             crewData = data;
             return data;
         } catch (error) {
-            console.warn(`Failed to fetch from ${endpoint.url}:`, error.message);
-            lastError = error;
             continue;
         }
     }
-
-    console.error('All crew data APIs failed:', lastError);
-    throw lastError;
+    throw new Error('All crew APIs failed');
 }
 
-// Render crew members in the panel
 function renderCrewList(data) {
     const crewList = document.getElementById('crew-list');
     const crewCount = document.querySelector('.crew-count');
@@ -97,197 +382,114 @@ function renderCrewList(data) {
 
     if (!crewList) return;
 
-    // Filter for ISS crew only
-    const issCrew = data.people.filter(person => person.isIss || person.craft === 'ISS');
-    const otherCrew = data.people.filter(person => !person.isIss && person.craft !== 'ISS');
+    const issCrew = data.people.filter(p => p.isIss || p.craft === 'ISS');
+    const otherCrew = data.people.filter(p => !p.isIss && p.craft !== 'ISS');
 
-    // Update crew count badge
-    if (crewCount) {
-        crewCount.textContent = issCrew.length;
-    }
+    if (crewCount) crewCount.textContent = issCrew.length;
+    if (crewUpdated) crewUpdated.textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
 
-    // Update timestamp
-    if (crewUpdated) {
-        crewUpdated.textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
-    }
-
-    // Build crew list HTML
     let html = '';
+    issCrew.forEach(p => { html += createCrewMemberCard(p); });
 
-    // ISS Crew section
-    if (issCrew.length > 0) {
-        issCrew.forEach(person => {
-            html += createCrewMemberCard(person);
-        });
-    }
-
-    // Other spacecraft section (if any)
     if (otherCrew.length > 0) {
         html += `<div class="crew-section-divider">Other Spacecraft</div>`;
-        otherCrew.forEach(person => {
-            html += createCrewMemberCard(person);
-        });
+        otherCrew.forEach(p => { html += createCrewMemberCard(p); });
     }
 
     crewList.innerHTML = html;
 }
 
-// Convert country code to flag emoji
 function getFlagEmoji(countryCode) {
     if (!countryCode || countryCode.length !== 2) return '';
-    const codePoints = countryCode
-        .toUpperCase()
-        .split('')
-        .map(char => 127397 + char.charCodeAt(0));
+    const codePoints = countryCode.toUpperCase().split('').map(char => 127397 + char.charCodeAt(0));
     return String.fromCodePoint(...codePoints);
 }
 
-// Format days in space
 function formatDaysInSpace(days) {
     if (!days) return null;
     if (days < 30) return `${days} days`;
     if (days < 365) return `${Math.floor(days / 30)} months`;
     const years = Math.floor(days / 365);
-    const remainingMonths = Math.floor((days % 365) / 30);
-    if (remainingMonths === 0) return `${years}y`;
-    return `${years}y ${remainingMonths}m`;
+    const months = Math.floor((days % 365) / 30);
+    return months === 0 ? `${years}y` : `${years}y ${months}m`;
 }
 
-// Format launch date
 function formatLaunchDate(timestamp) {
     if (!timestamp) return null;
-    const date = new Date(timestamp * 1000);
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    return new Date(timestamp * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-// Create HTML for a single crew member card
 function createCrewMemberCard(person) {
-    // Determine icon based on craft
-    const craftIcon = person.craft === 'ISS' ? 'fa-satellite' : 'fa-rocket';
-
-    // Build avatar - use image if available
     const avatarHtml = person.image
         ? `<img src="${escapeHtml(person.image)}" alt="${escapeHtml(person.name)}" class="crew-avatar-img" onerror="this.parentElement.innerHTML='<i class=\\'fas fa-user-astronaut\\'></i>'">`
         : `<i class="fas fa-user-astronaut"></i>`;
 
-    // Build country/flag display
     const flagEmoji = getFlagEmoji(person.flagCode);
-    const countryDisplay = person.country
-        ? `<span class="crew-country">${flagEmoji} ${escapeHtml(person.country)}</span>`
-        : '';
+    const countryDisplay = person.country ? `<span class="crew-country">${flagEmoji} ${escapeHtml(person.country)}</span>` : '';
+    const positionDisplay = person.position ? `<div class="crew-position">${escapeHtml(person.position)}</div>` : '';
+    const agencyDisplay = person.agency ? `<span class="crew-agency">${escapeHtml(person.agency)}</span>` : '';
 
-    // Build position/role display
-    const positionDisplay = person.position
-        ? `<div class="crew-position">${escapeHtml(person.position)}</div>`
-        : '';
-
-    // Build agency badge
-    const agencyDisplay = person.agency
-        ? `<span class="crew-agency">${escapeHtml(person.agency)}</span>`
-        : '';
-
-    // Build time in space stat
     const daysDisplay = formatDaysInSpace(person.daysInSpace);
-    const timeInSpaceHtml = daysDisplay
-        ? `<div class="crew-stat"><i class="fas fa-clock"></i> ${daysDisplay} in space</div>`
-        : '';
+    const timeInSpaceHtml = daysDisplay ? `<div class="crew-stat"><i class="fas fa-clock"></i> ${daysDisplay} in space</div>` : '';
 
-    // Build launch date stat
     const launchDate = formatLaunchDate(person.launchedTimestamp);
-    const launchHtml = launchDate
-        ? `<div class="crew-stat"><i class="fas fa-rocket"></i> Launched ${launchDate}</div>`
-        : '';
+    const launchHtml = launchDate ? `<div class="crew-stat"><i class="fas fa-rocket"></i> Launched ${launchDate}</div>` : '';
 
-    // Build social links
     let socialHtml = '';
     if (person.twitter || person.instagram || person.bioUrl) {
         socialHtml = '<div class="crew-social">';
-        if (person.twitter) {
-            socialHtml += `<a href="https://twitter.com/${escapeHtml(person.twitter)}" target="_blank" rel="noopener" title="Twitter"><i class="fab fa-twitter"></i></a>`;
-        }
-        if (person.instagram) {
-            socialHtml += `<a href="https://instagram.com/${escapeHtml(person.instagram)}" target="_blank" rel="noopener" title="Instagram"><i class="fab fa-instagram"></i></a>`;
-        }
-        if (person.bioUrl) {
-            socialHtml += `<a href="${escapeHtml(person.bioUrl)}" target="_blank" rel="noopener" title="Biography"><i class="fas fa-external-link-alt"></i></a>`;
-        }
+        if (person.twitter) socialHtml += `<a href="https://twitter.com/${escapeHtml(person.twitter)}" target="_blank" rel="noopener" title="Twitter"><i class="fab fa-twitter"></i></a>`;
+        if (person.instagram) socialHtml += `<a href="https://instagram.com/${escapeHtml(person.instagram)}" target="_blank" rel="noopener" title="Instagram"><i class="fab fa-instagram"></i></a>`;
+        if (person.bioUrl) socialHtml += `<a href="${escapeHtml(person.bioUrl)}" target="_blank" rel="noopener" title="Biography"><i class="fas fa-external-link-alt"></i></a>`;
         socialHtml += '</div>';
     }
 
     return `
         <div class="crew-member">
             <div class="crew-member-header">
-                <div class="crew-avatar">
-                    ${avatarHtml}
-                </div>
+                <div class="crew-avatar">${avatarHtml}</div>
                 <div class="crew-member-info">
                     <h3 class="crew-name">${escapeHtml(person.name)}</h3>
                     ${positionDisplay}
-                    <div class="crew-meta">
-                        ${countryDisplay}
-                        ${agencyDisplay}
-                    </div>
+                    <div class="crew-meta">${countryDisplay}${agencyDisplay}</div>
                 </div>
             </div>
-            <div class="crew-details">
-                ${timeInSpaceHtml}
-                ${launchHtml}
-            </div>
+            <div class="crew-details">${timeInSpaceHtml}${launchHtml}</div>
             ${socialHtml}
         </div>
     `;
 }
 
-// Escape HTML to prevent XSS
 function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
 }
 
-// Show error state in crew panel
 function showCrewError(message) {
     const crewList = document.getElementById('crew-list');
     if (!crewList) return;
-
     crewList.innerHTML = `
         <div class="crew-error">
             <i class="fas fa-exclamation-triangle"></i>
             <p>${escapeHtml(message)}</p>
-            <button onclick="initCrewPanel()" class="retry-btn" style="
-                margin-top: 1rem;
-                padding: 0.5rem 1rem;
-                background: #0a3872;
-                border: 1px solid #1e5799;
-                color: #7fb1ff;
-                border-radius: 4px;
-                cursor: pointer;
-            ">
+            <button onclick="initCrewPanel()" class="retry-btn" style="margin-top:1rem;padding:0.5rem 1rem;background:#0a3872;border:1px solid #1e5799;color:#7fb1ff;border-radius:4px;cursor:pointer;">
                 <i class="fas fa-redo"></i> Retry
             </button>
         </div>
     `;
 }
 
-// Toggle crew panel open/closed
 function toggleCrewPanel() {
     const panel = document.getElementById('crew-panel');
-    if (panel) {
-        panel.classList.toggle('open');
-    }
+    if (panel) panel.classList.toggle('open');
 }
 
-// Initialize crew panel
 async function initCrewPanel() {
     const crewList = document.getElementById('crew-list');
     if (crewList) {
-        crewList.innerHTML = `
-            <div class="crew-loading">
-                <i class="fas fa-spinner fa-spin"></i> Loading crew data...
-            </div>
-        `;
+        crewList.innerHTML = `<div class="crew-loading"><i class="fas fa-spinner fa-spin"></i> Loading crew data...</div>`;
     }
-
     try {
         const data = await fetchCrewData();
         renderCrewList(data);
@@ -296,30 +498,20 @@ async function initCrewPanel() {
     }
 }
 
-// Set up crew panel event listeners
 function setupCrewPanelEvents() {
     const toggleBtn = document.getElementById('crew-toggle');
     const closeBtn = document.getElementById('crew-close');
     const panel = document.getElementById('crew-panel');
 
-    if (toggleBtn) {
-        toggleBtn.addEventListener('click', toggleCrewPanel);
-    }
+    if (toggleBtn) toggleBtn.addEventListener('click', toggleCrewPanel);
+    if (closeBtn) closeBtn.addEventListener('click', toggleCrewPanel);
 
-    if (closeBtn) {
-        closeBtn.addEventListener('click', toggleCrewPanel);
-    }
-
-    // Close panel when clicking outside (optional)
     document.addEventListener('click', (e) => {
-        if (panel && panel.classList.contains('open')) {
-            if (!panel.contains(e.target) && !toggleBtn.contains(e.target)) {
-                panel.classList.remove('open');
-            }
+        if (panel && panel.classList.contains('open') && !panel.contains(e.target) && !toggleBtn.contains(e.target)) {
+            panel.classList.remove('open');
         }
     });
 
-    // Close panel with Escape key
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && panel && panel.classList.contains('open')) {
             panel.classList.remove('open');
@@ -331,23 +523,15 @@ function setupCrewPanelEvents() {
 // LIVE FEED PANEL FUNCTIONALITY
 // ================================================
 
-let liveFeedLoaded = false;
-
-// Toggle live feed panel
 function toggleLiveFeedPanel() {
     const panel = document.getElementById('livefeed-panel');
     if (panel) {
         const isOpening = !panel.classList.contains('open');
         panel.classList.toggle('open');
-
-        // Lazy load iframe when panel opens for the first time
-        if (isOpening && !liveFeedLoaded) {
-            loadLiveFeed();
-        }
+        if (isOpening && !liveFeedLoaded) loadLiveFeed();
     }
 }
 
-// Load the live feed iframe (lazy loading to save bandwidth)
 function loadLiveFeed() {
     const iframe = document.getElementById('livefeed-iframe');
     if (iframe && iframe.dataset.src) {
@@ -356,30 +540,20 @@ function loadLiveFeed() {
     }
 }
 
-// Set up live feed panel event listeners
 function setupLiveFeedEvents() {
     const toggleBtn = document.getElementById('livefeed-toggle');
     const closeBtn = document.getElementById('livefeed-close');
     const panel = document.getElementById('livefeed-panel');
 
-    if (toggleBtn) {
-        toggleBtn.addEventListener('click', toggleLiveFeedPanel);
-    }
+    if (toggleBtn) toggleBtn.addEventListener('click', toggleLiveFeedPanel);
+    if (closeBtn) closeBtn.addEventListener('click', toggleLiveFeedPanel);
 
-    if (closeBtn) {
-        closeBtn.addEventListener('click', toggleLiveFeedPanel);
-    }
-
-    // Close panel when clicking outside
     document.addEventListener('click', (e) => {
-        if (panel && panel.classList.contains('open')) {
-            if (!panel.contains(e.target) && !toggleBtn.contains(e.target)) {
-                panel.classList.remove('open');
-            }
+        if (panel && panel.classList.contains('open') && !panel.contains(e.target) && !toggleBtn.contains(e.target)) {
+            panel.classList.remove('open');
         }
     });
 
-    // Close panel with Escape key (handled globally with crew panel)
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && panel && panel.classList.contains('open')) {
             panel.classList.remove('open');
@@ -388,535 +562,22 @@ function setupLiveFeedEvents() {
 }
 
 // ================================================
-// DAY/NIGHT TERMINATOR FUNCTIONALITY
+// INITIALIZATION
 // ================================================
 
-// Calculate the sun's position (simplified solar calculations)
-function getSunPosition(date) {
-    const dayOfYear = getDayOfYear(date);
-    const hours = date.getUTCHours() + date.getUTCMinutes() / 60;
-
-    // Solar declination (angle of sun relative to equator)
-    // Varies from +23.45° (summer solstice) to -23.45° (winter solstice)
-    const declination = -23.45 * Math.cos((360 / 365) * (dayOfYear + 10) * (Math.PI / 180));
-
-    // Hour angle - where the sun is in its daily path
-    // At noon UTC, sun is over 0° longitude
-    const hourAngle = (hours - 12) * 15; // 15° per hour
-
-    // Subsolar point (where sun is directly overhead)
-    const sunLat = declination;
-    const sunLng = -hourAngle;
-
-    return { lat: sunLat, lng: sunLng };
-}
-
-// Get day of year (1-365)
-function getDayOfYear(date) {
-    const start = new Date(date.getFullYear(), 0, 0);
-    const diff = date - start;
-    const oneDay = 1000 * 60 * 60 * 24;
-    return Math.floor(diff / oneDay);
-}
-
-// Calculate terminator points (the line where day meets night)
-function calculateTerminator(date) {
-    const sunPos = getSunPosition(date);
-    const points = [];
-
-    // Generate points along the terminator
-    // The terminator is a great circle 90° from the subsolar point
-    for (let lng = -180; lng <= 180; lng += 2) {
-        // Calculate latitude of terminator at this longitude
-        const lngDiff = (lng - sunPos.lng) * (Math.PI / 180);
-        const sunLatRad = sunPos.lat * (Math.PI / 180);
-
-        // Terminator latitude calculation
-        const terminatorLat = Math.atan(-Math.cos(lngDiff) / Math.tan(sunLatRad)) * (180 / Math.PI);
-
-        if (!isNaN(terminatorLat) && terminatorLat >= -90 && terminatorLat <= 90) {
-            points.push({ lat: terminatorLat, lng: lng });
-        }
-    }
-
-    return { points, sunPos };
-}
-
-// Draw the day/night overlay on the map
-function updateDayNightOverlay() {
-    const overlay = document.querySelector('.day-night-overlay');
-    if (!overlay) return;
-
-    const now = new Date();
-    const { points, sunPos } = calculateTerminator(now);
-
-    // Create or get SVG
-    let svg = overlay.querySelector('svg');
-    if (!svg) {
-        svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        svg.setAttribute('width', '100%');
-        svg.setAttribute('height', '100%');
-        svg.setAttribute('preserveAspectRatio', 'none');
-        svg.setAttribute('viewBox', '0 0 100 100');
-        overlay.appendChild(svg);
-    }
-
-    // Create the night polygon
-    let nightPath = svg.querySelector('.night-area');
-    if (!nightPath) {
-        nightPath = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-        nightPath.setAttribute('class', 'night-area');
-        nightPath.setAttribute('fill', 'rgba(0, 0, 20, 0.4)');
-        svg.appendChild(nightPath);
-    }
-
-    // Create the terminator line
-    let terminatorLine = svg.querySelector('.terminator-line');
-    if (!terminatorLine) {
-        terminatorLine = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
-        terminatorLine.setAttribute('class', 'terminator-line');
-        terminatorLine.setAttribute('fill', 'none');
-        terminatorLine.setAttribute('stroke', 'rgba(255, 200, 100, 0.6)');
-        terminatorLine.setAttribute('stroke-width', '0.3');
-        terminatorLine.setAttribute('stroke-dasharray', '1, 0.5');
-        svg.appendChild(terminatorLine);
-    }
-
-    // Convert terminator points to SVG coordinates
-    const svgPoints = points.map(p => {
-        const pos = latLngToPosition(p.lat, p.lng);
-        return `${pos.x},${pos.y}`;
-    });
-
-    // Set terminator line
-    terminatorLine.setAttribute('points', svgPoints.join(' '));
-
-    // Determine which side is night (opposite of sun)
-    // If sun is in northern hemisphere, night polygon goes south of terminator in that hemisphere
-    const isNorthernHemisphereSummer = sunPos.lat > 0;
-
-    // Build night polygon - terminator line plus edges
-    let polygonPoints = [];
-
-    if (isNorthernHemisphereSummer) {
-        // Night is on the south side of the terminator
-        // Start from bottom-left, go along bottom, then up terminator, back along top if needed
-        polygonPoints.push('0,100'); // Bottom-left
-        polygonPoints.push('100,100'); // Bottom-right
-
-        // Add terminator points from right to left (reversed)
-        for (let i = points.length - 1; i >= 0; i--) {
-            const pos = latLngToPosition(points[i].lat, points[i].lng);
-            polygonPoints.push(`${pos.x},${pos.y}`);
-        }
-    } else {
-        // Night is on the north side of the terminator
-        polygonPoints.push('0,0'); // Top-left
-        polygonPoints.push('100,0'); // Top-right
-
-        // Add terminator points from right to left (reversed)
-        for (let i = points.length - 1; i >= 0; i--) {
-            const pos = latLngToPosition(points[i].lat, points[i].lng);
-            polygonPoints.push(`${pos.x},${pos.y}`);
-        }
-    }
-
-    nightPath.setAttribute('points', polygonPoints.join(' '));
-}
-
-// Add pulsing effect to ISS icon
-function addPulsingEffect() {
-    const issIcon = document.getElementById('iss-icon');
-    if (!issIcon) return;
-    
-    // Add pulsing animation with CSS
-    issIcon.style.animation = 'pulse 2s infinite';
-    
-    // Add keyframes if they don't exist
-    if (!document.getElementById('pulse-keyframes')) {
-        const style = document.createElement('style');
-        style.id = 'pulse-keyframes';
-        style.textContent = `
-            @keyframes pulse {
-                0% { filter: drop-shadow(0 0 5px rgba(255, 255, 0, 0.8)) brightness(1.2); transform: translate(-50%, -50%) scale(1); }
-                50% { filter: drop-shadow(0 0 15px rgba(255, 255, 0, 1)) brightness(1.5); transform: translate(-50%, -50%) scale(1.15); }
-                100% { filter: drop-shadow(0 0 5px rgba(255, 255, 0, 0.8)) brightness(1.2); transform: translate(-50%, -50%) scale(1); }
-            }
-        `;
-        document.head.appendChild(style);
-    }
-}
-
-// Convert latitude/longitude to x/y position on the map
-function latLngToPosition(lat, lng) {
-    // Map lat (-90 to 90) to y (100% to 0%)
-    const y = (90 - lat) / 180;
-    
-    // Map lng (-180 to 180) to x (0% to 100%)
-    let x = (lng + 180) / 360;
-    
-    return {
-        x: x * 100, // convert to percentage
-        y: y * 100  // convert to percentage
-    };
-}
-
-// Update the ISS icon position with smooth animation
-function updateISSPosition(lat, lng) {
-    const position = latLngToPosition(lat, lng);
-    const issIcon = document.getElementById('iss-icon');
-    
-    if (issIcon) {
-        // Use CSS transitions for smooth movement
-        issIcon.style.left = `${position.x}%`;
-        issIcon.style.top = `${position.y}%`;
-    }
-}
-
-// Draw the orbit path based on accumulated positions
-function updateOrbitPath() {
-    // Log the number of points for debugging
-    console.log(`Updating orbit path with ${orbitPathPoints.length} points`);
-    
-    if (orbitPathPoints.length < 2) {
-        console.log("Not enough points to draw path");
-        return;
-    }
-    
-    const orbitPath = document.querySelector('.orbit-path');
-    if (!orbitPath) {
-        console.error("Orbit path container not found");
-        return;
-    }
-    
-    // Create SVG element
-    let svg = orbitPath.querySelector('svg');
-    if (!svg) {
-        console.log("Creating new SVG element for orbit path");
-        svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        svg.setAttribute('width', '100%');
-        svg.setAttribute('height', '100%');
-        svg.style.position = 'absolute';
-        svg.style.top = '0';
-        svg.style.left = '0';
-        orbitPath.appendChild(svg);
-    }
-    
-    // Create path element with much higher visibility
-    let path = svg.querySelector('path:not(.prediction)');
-    if (!path) {
-        console.log("Creating new path element for orbit trail");
-        path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        path.setAttribute('fill', 'none');
-        path.setAttribute('stroke', '#ff9500'); // Brighter orange color
-        path.setAttribute('stroke-width', '4');  // Thicker line
-        path.setAttribute('stroke-dasharray', '7, 5');
-        path.setAttribute('opacity', '1');  // Full opacity
-        path.setAttribute('stroke-linecap', 'round');
-        path.setAttribute('filter', 'drop-shadow(0 0 3px #ff9500)'); // Add glow
-        svg.appendChild(path);
-    } else {
-        // Update existing path attributes to make sure it's very visible
-        path.setAttribute('stroke', '#ff9500');
-        path.setAttribute('stroke-width', '4');
-        path.setAttribute('opacity', '1');
-        path.setAttribute('filter', 'drop-shadow(0 0 3px #ff9500)');
-    }
-    
-    // Create path data from points
-    let pathData = '';
-    let skipNext = false;
-    
-    orbitPathPoints.forEach((point, index) => {
-        const pos = latLngToPosition(point.lat, point.lng);
-        
-        // Check for international date line crossing
-        if (index > 0) {
-            const prevPos = latLngToPosition(orbitPathPoints[index-1].lat, orbitPathPoints[index-1].lng);
-            // If x position difference is too large, it's crossing the date line
-            if (Math.abs(pos.x - prevPos.x) > 50) {
-                skipNext = true;
-                return;
-            }
-        }
-        
-        if (skipNext) {
-            skipNext = false;
-            pathData += `M ${pos.x} ${pos.y}`;
-        } else if (index === 0) {
-            pathData += `M ${pos.x} ${pos.y}`;
-        } else {
-            pathData += ` L ${pos.x} ${pos.y}`;
-        }
-    });
-    
-    // Set the path data and log for debugging
-    path.setAttribute('d', pathData);
-    console.log(`Path data set with ${orbitPathPoints.length} points`);
-}
-
-// Generate orbit prediction
-function generateOrbitPrediction(lat, lng) {
-    console.log(`Generating orbit prediction from lat: ${lat}, lng: ${lng}`);
-    
-    const orbitPoints = [];
-    const orbitalInclination = 51.6; // ISS orbital inclination in degrees
-    
-    // Create future orbit points (simplified prediction)
-    for (let i = 0; i <= 360; i += 5) {
-        const angle = i * Math.PI / 180;
-        const latOffset = Math.sin(angle) * orbitalInclination * 0.75;
-        const lngOffset = i * 0.5; // Move eastward
-        
-        let orbitLat = lat + latOffset;
-        let orbitLng = (lng + lngOffset) % 360;
-        if (orbitLng > 180) orbitLng -= 360;
-        
-        // Ensure we stay within valid bounds
-        if (orbitLat >= -90 && orbitLat <= 90) {
-            orbitPoints.push({lat: orbitLat, lng: orbitLng});
-        }
-    }
-    
-    console.log(`Created ${orbitPoints.length} prediction points`);
-    
-    // Draw orbit prediction line
-    const orbitPath = document.querySelector('.orbit-path');
-    if (!orbitPath) {
-        console.error("Orbit path container not found for prediction");
-        return;
-    }
-    
-    // Create SVG for orbit prediction
-    let svg = orbitPath.querySelector('svg');
-    if (!svg) {
-        console.log("Creating new SVG element for prediction path");
-        svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        svg.setAttribute('width', '100%');
-        svg.setAttribute('height', '100%');
-        svg.style.position = 'absolute';
-        svg.style.top = '0';
-        svg.style.left = '0';
-        orbitPath.appendChild(svg);
-    }
-    
-    // Create path for prediction with enhanced visibility
-    let path = svg.querySelector('path.prediction');
-    if (!path) {
-        console.log("Creating new path element for prediction");
-        path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        path.setAttribute('class', 'prediction');
-        path.setAttribute('fill', 'none');
-        path.setAttribute('stroke', '#ffdd00'); // Bright yellow
-        path.setAttribute('stroke-width', '2.5');
-        path.setAttribute('stroke-dasharray', '3, 5');
-        path.setAttribute('opacity', '0.8'); // More visible
-        path.setAttribute('stroke-linecap', 'round');
-        path.setAttribute('filter', 'drop-shadow(0 0 2px #ffdd00)'); // Add glow
-        svg.appendChild(path);
-    } else {
-        // Update existing path attributes for better visibility
-        path.setAttribute('stroke', '#ffdd00');
-        path.setAttribute('stroke-width', '2.5');
-        path.setAttribute('opacity', '0.8');
-        path.setAttribute('filter', 'drop-shadow(0 0 2px #ffdd00)');
-    }
-    
-    // Create path data
-    let pathData = '';
-    let skipNext = false;
-    
-    orbitPoints.forEach((point, index) => {
-        const pos = latLngToPosition(point.lat, point.lng);
-        
-        // Check for international date line crossing
-        if (index > 0) {
-            const prevPos = latLngToPosition(orbitPoints[index-1].lat, orbitPoints[index-1].lng);
-            if (Math.abs(pos.x - prevPos.x) > 50) {
-                skipNext = true;
-                return;
-            }
-        }
-        
-        if (skipNext) {
-            skipNext = false;
-            pathData += `M ${pos.x} ${pos.y}`;
-        } else if (index === 0) {
-            pathData += `M ${pos.x} ${pos.y}`;
-        } else {
-            pathData += ` L ${pos.x} ${pos.y}`;
-        }
-    });
-    
-    // Set the path data and log for debugging
-    path.setAttribute('d', pathData);
-    console.log("Prediction path data set");
-}
-
-// Update information in the header with all NASA-style data
-function updateInfoHeader(lat, lng, altitude, velocity, timestamp) {
-    const updateTimeElement = document.getElementById('update-time');
-    const latElement = document.getElementById('iss-latitude');
-    const lngElement = document.getElementById('iss-longitude');
-    const altElement = document.getElementById('iss-altitude');
-    const velElement = document.getElementById('iss-velocity');
-    
-    if (updateTimeElement) {
-        updateTimeElement.textContent = timestamp;
-    }
-    
-    if (latElement) {
-        latElement.textContent = lat.toFixed(2) + '°';
-    }
-    
-    if (lngElement) {
-        lngElement.textContent = lng.toFixed(2) + '°';
-    }
-    
-    if (altElement && altitude !== undefined) {
-        // Convert from km to miles
-        const altitudeMiles = (altitude * 0.621371).toFixed(0);
-        altElement.textContent = altitudeMiles + ' mi';
-    }
-    
-    if (velElement && velocity !== undefined) {
-        // Convert from km/h to mph
-        const velocityMph = (velocity * 0.621371).toFixed(0);
-        velElement.textContent = velocityMph + ' mph';
-    }
-}
-
-// Update ISS position
-async function updateISS() {
-    const statusIndicator = document.getElementById('status-indicator');
-    statusIndicator.innerHTML = '⏳';
-    statusIndicator.title = 'Updating ISS position...';
-    
-    try {
-        // Use a reliable public API as the primary source
-        const apiUrl = 'https://api.wheretheiss.at/v1/satellites/25544';
-        
-        console.log('Fetching ISS position from:', apiUrl);
-        const response = await fetch(apiUrl, {
-            method: 'GET',
-            headers: {
-                'Accept': 'application/json'
-            },
-            cache: 'no-cache'
-        });
-        
-        if (!response.ok) {
-            throw new Error(`API returned status: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        
-        // Parse coordinates and other data
-        const lat = parseFloat(data.latitude);
-        const lng = parseFloat(data.longitude);
-        const altitude = parseFloat(data.altitude);
-        const velocity = parseFloat(data.velocity);
-        const timestamp = new Date().toLocaleTimeString();
-        
-        // Validate coordinates
-        if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
-            throw new Error(`Invalid coordinates received: lat=${lat}, lng=${lng}`);
-        }
-        
-        // Update status indicator
-        statusIndicator.innerHTML = '✅';
-        statusIndicator.title = `Last updated: ${timestamp} - Position: ${lat.toFixed(2)}°, ${lng.toFixed(2)}°`;
-        
-        // Update info header with position data
-        updateInfoHeader(lat, lng, altitude, velocity, timestamp);
-        
-        // Update ISS position on the static map
-        updateISSPosition(lat, lng);
-          // Add the current position to our orbit path points
-        orbitPathPoints.push({lat, lng});
-        console.log(`Added point to orbit path: [${lat}, ${lng}], total points: ${orbitPathPoints.length}`);
-        
-        // Keep only the last maxOrbitPoints points
-        if (orbitPathPoints.length > maxOrbitPoints) {
-            orbitPathPoints.shift(); // Remove oldest point
-        }
-        
-        // After the first position, also add a few points around it to make trail visible immediately
-        if (orbitPathPoints.length === 1) {
-            console.log("First position - adding additional points to make trail visible");
-            // Add a few points slightly offset to make a visible trail
-            orbitPathPoints.push({lat: lat + 0.1, lng: lng + 0.1});
-            orbitPathPoints.push({lat: lat + 0.2, lng: lng + 0.2});
-        }
-        
-        // Update the orbit path visualization
-        updateOrbitPath();
-        
-        // Generate orbit prediction
-        generateOrbitPrediction(lat, lng);
-        
-        console.log(`ISS Position Updated: Lat ${lat.toFixed(4)}, Lng ${lng.toFixed(4)} at ${timestamp}`);
-    } catch (error) {
-        console.error("Failed to fetch ISS position:", error);
-        statusIndicator.innerHTML = '❌';
-        statusIndicator.title = 'Error updating ISS position. Will retry.';
-    }
-}
-
-// Function to handle container resize
-function handleResize() {
-    // Calculate available space considering the header
-    const navBarHeight = document.querySelector('.nav-bar')?.offsetHeight || 0;
-    const infoHeaderHeight = document.querySelector('.info-header')?.offsetHeight || 0;
-    const totalHeaderHeight = navBarHeight + infoHeaderHeight;
-    
-    // Calculate viewport dimensions
-    const windowWidth = window.innerWidth;
-    const windowHeight = window.innerHeight;
-    
-    // Calculate available map height
-    const availableHeight = windowHeight - totalHeaderHeight;
-    
-    // Set the map container height
-    const mapContainer = document.getElementById('map-container');
-    if (mapContainer) {
-        mapContainer.style.height = `${availableHeight}px`;
-    }
-    
-    // Log resize for debugging
-    console.log(`Map container resized: ${windowWidth}x${availableHeight}`);
-}
-
-// Wait for DOM ready
 document.addEventListener('DOMContentLoaded', function() {
-    // Handle initial size setup
-    handleResize();
-
-    // Add pulsing effect to the ISS icon
-    addPulsingEffect();
+    // Initialize Leaflet map
+    initMap();
 
     // Initialize ISS tracking
     updateISS();
-
-    // Set interval to update ISS position every 10 seconds
     setInterval(updateISS, 10000);
-
-    // Add window resize event listener
-    window.addEventListener('resize', handleResize);
 
     // Initialize crew panel
     setupCrewPanelEvents();
     initCrewPanel();
-
-    // Refresh crew data every 5 minutes (crew changes are rare)
     setInterval(initCrewPanel, 300000);
 
     // Initialize live feed panel
     setupLiveFeedEvents();
-
-    // Initialize day/night terminator
-    updateDayNightOverlay();
-
-    // Update terminator every minute (it moves slowly)
-    setInterval(updateDayNightOverlay, 60000);
 });

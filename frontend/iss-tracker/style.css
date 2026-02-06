@@ -1,3 +1,6 @@
+/* Add Google font for NASA-like look */
+@import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500&display=swap');
+
 html, body {
   margin: 0;
   padding: 0;
@@ -9,16 +12,19 @@ html, body {
 body {
   font-family: system-ui, sans-serif;
   text-align: center;
-  background: #f8f9fa;
+  background: #000d24;
   display: flex;
   flex-direction: column;
   position: relative;
-  overflow: hidden; /* Hide overflow in all directions */
-  height: 100vh; /* Ensure full height */
-  width: 100vw; /* Ensure full width */
-  align-items: center; /* Center content horizontally */
-  margin: 0; /* Ensure no margin */
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+  margin: 0;
 }
+
+/* ================================================
+   NAVIGATION BAR
+   ================================================ */
 
 .nav-bar {
   background-color: #00112b;
@@ -29,6 +35,7 @@ body {
   align-items: center;
   flex-shrink: 0;
   border-bottom: 1px solid #0a3872;
+  z-index: 500;
 }
 
 .title {
@@ -63,12 +70,9 @@ body {
   color: #3498db;
 }
 
-h1 {
-  margin: 0.5rem;
-  padding: 0;
-  color: #2c3e50;
-  font-size: 1.5rem;
-}
+/* ================================================
+   INFO HEADER
+   ================================================ */
 
 .info-header {
   background-color: rgba(0, 13, 36, 0.95);
@@ -77,11 +81,11 @@ h1 {
   border-bottom: 1px solid #0e4686;
   flex-shrink: 0;
   width: 100%;
-  z-index: 10;
+  z-index: 500;
 }
 
 .header-content {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
   padding: 0 1rem;
 }
@@ -96,15 +100,15 @@ h1 {
 .orbital-data {
   display: flex;
   flex-wrap: wrap;
-  justify-content: space-between;
+  justify-content: center;
+  gap: 0.5rem;
   margin-bottom: 0.3rem;
   font-family: 'Roboto Mono', monospace, system-ui;
 }
 
 .data-group {
-  padding: 0 0.5rem;
-  min-width: 100px;
-  flex: 1;
+  padding: 0 0.8rem;
+  min-width: 90px;
   text-align: center;
 }
 
@@ -122,245 +126,137 @@ h1 {
   text-shadow: 0 0 10px rgba(72, 169, 255, 0.4);
 }
 
-/* NASA-style static map container */
-#map-container {
-  height: calc(100vh - 115px);
-  width: 100%;
-  margin: 0;
-  padding: 0;
-  position: relative;
-  flex-grow: 1;
+/* Location display - special styling */
+.location-group {
+  min-width: 140px;
+  max-width: 200px;
+}
+
+.location-value {
+  font-size: 0.85rem;
+  white-space: nowrap;
   overflow: hidden;
-  background-color: #000d24;
-  transition: height 0.3s ease;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  text-overflow: ellipsis;
 }
 
-/* Ensure viewport is properly handled */
-@viewport {
-  width: device-width;
-  zoom: 1.0;
-}
+/* ================================================
+   LEAFLET MAP CONTAINER
+   ================================================ */
 
-/* Fix for iOS devices that might have scrolling issues */
-html.ios, html.ios body {
-  height: 100% !important;
-}
-
-/* Ensure map container has no horizontal overflow */
-html, body, #map-container {
-  max-width: 100% !important;
-  overflow: hidden !important;
-}
-
-/* Ensure map is responsive on all devices */
-@media screen and (max-width: 768px) {
-  #map-container {
-    width: 100vw !important;
-    height: 80vh !important;
-  }
-}
-
-/* NASA-style coordinate labels */
-.coordinate-labels {
-  position: absolute;
+#map-container {
+  flex: 1;
   width: 100%;
-  height: 100%;
-  pointer-events: none;
-  color: rgba(100, 180, 255, 0.8);
-  font-size: 11px;
+  z-index: 1;
+}
+
+/* Leaflet overrides for dark theme */
+.leaflet-container {
+  background: #000d24;
   font-family: 'Roboto Mono', monospace;
-  z-index: 22;
 }
 
-.lat-labels {
-  position: absolute;
-  left: 8px;
-  top: 0;
-  height: 100%;
+.leaflet-control-zoom {
+  border: none !important;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.3) !important;
+}
+
+.leaflet-control-zoom a {
+  background-color: rgba(0, 17, 43, 0.9) !important;
+  color: #7fb1ff !important;
+  border: 1px solid #1e5799 !important;
+}
+
+.leaflet-control-zoom a:hover {
+  background-color: rgba(10, 56, 114, 0.9) !important;
+  color: #fff !important;
+}
+
+.leaflet-control-attribution {
+  background: rgba(0, 13, 36, 0.8) !important;
+  color: #7fb1ff !important;
+  font-size: 10px !important;
+}
+
+.leaflet-control-attribution a {
+  color: #48a9ff !important;
+}
+
+/* Leaflet popup styling */
+.leaflet-popup-content-wrapper {
+  background: rgba(0, 17, 43, 0.95);
+  color: #fff;
+  border: 1px solid #1e5799;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 60, 120, 0.4);
+}
+
+.leaflet-popup-content {
+  margin: 12px 16px;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.leaflet-popup-tip {
+  background: rgba(0, 17, 43, 0.95);
+  border: 1px solid #1e5799;
+}
+
+.leaflet-popup-close-button {
+  color: #7fb1ff !important;
+}
+
+.leaflet-popup-close-button:hover {
+  color: #ff6b35 !important;
+}
+
+/* ================================================
+   ISS MARKER STYLING
+   ================================================ */
+
+.iss-marker {
+  background: transparent;
+}
+
+.iss-marker-inner {
+  width: 50px;
+  height: 50px;
   display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  padding: 10px 0;
-  text-shadow: 0 0 3px rgba(0, 0, 0, 0.8);
-}
-
-.lng-labels {
-  position: absolute;
-  bottom: 8px;
-  width: 100%;
-  display: flex;
-  justify-content: space-between;
-  padding: 0 10px;
-  box-sizing: border-box;
-  text-shadow: 0 0 3px rgba(0, 0, 0, 0.8);
-}
-
-/* Trajectory line styling */
-.iss-trajectory {
-  stroke: #ffcc00;
-  stroke-width: 2;
-  stroke-dasharray: 5, 5;
-  fill: none;
-  pointer-events: none;
-}
-
-/* Fix edge issues */
-@media screen and (min-width: 768px) {
-  #map-container {
-    width: 100vw !important;
-    margin-left: 0 !important;
-    margin-right: 0 !important;
-  }
-}
-
-/* NASA-style enhancements */
-.iss-icon {
-  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.8));
-}
-
-/* Add a subtle earth glow effect */
-.earth-glow {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  background: radial-gradient(circle at 50% 50%, rgba(0, 60, 120, 0.15), transparent 70%);
-  z-index: 400;
-}
-
-/* Night/day terminator styling */
-.day-night-terminator {
-  stroke: rgba(255, 255, 0, 0.5);
-  stroke-width: 1;
-  stroke-dasharray: 5, 5;
-  fill: rgba(255, 255, 0, 0.05);
-}
-
-/* Add Google font for NASA-like look */
-@import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500&display=swap');
-
-/* Mobile adjustments */
-@media screen and (max-width: 768px) {
-  .orbital-data {
-    flex-direction: row;
-    flex-wrap: wrap;
-    justify-content: center;
-  }
-  
-  .data-group {
-    padding: 0.2rem;
-    min-width: 80px;
-    margin-bottom: 0.3rem;
-  }
-  
-  .info-header h1 {
-    font-size: 1rem;
-  }
-}
-
-/* Static world map background */
-.world-map-background {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-image: url('https://eoimages.gsfc.nasa.gov/images/imagerecords/57000/57752/land_shallow_topo_2048.jpg');
-  background-size: 100% 100%;
-  background-position: center;
-  background-repeat: no-repeat;
-  z-index: 10;
-  filter: brightness(0.7) saturate(1.2) contrast(1.1);
-}
-
-/* Grid overlay for NASA-style look */
-.grid-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-image: 
-    linear-gradient(to right, rgba(50, 100, 200, 0.3) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(50, 100, 200, 0.3) 1px, transparent 1px);
-  background-size: calc(100% / 12) calc(100% / 6);
-  z-index: 20;
-  pointer-events: none;
-}
-
-/* Special equator line */
-.grid-overlay:before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 50%;
-  width: 100%;
-  height: 1px;
-  background-color: rgba(100, 150, 255, 0.8);
-  z-index: 21;
-}
-
-/* Special prime meridian line */
-.grid-overlay:after {
-  content: '';
-  position: absolute;
-  left: 50%;
-  top: 0;
-  width: 1px;
-  height: 100%;
-  background-color: rgba(100, 150, 255, 0.5);
-  z-index: 21;
-}
-
-/* ISS Icon styling */
-#iss-icon {
-  position: absolute;
-  width: 42px;
-  height: 30px;
-  background-image: url('https://upload.wikimedia.org/wikipedia/commons/d/d0/International_Space_Station.svg');
-  background-size: contain;
-  background-repeat: no-repeat;
-  transform: translate(-50%, -50%);
-  z-index: 30;
-  filter: drop-shadow(0 0 10px rgba(255, 255, 0, 0.9)) brightness(1.3);
-  transition: all 1s linear;
-  background-color: rgba(0, 0, 0, 0.5);
-  padding: 6px;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
   border-radius: 50%;
-  box-shadow: 0 0 0 2px rgba(255, 255, 0, 0.6);
+  border: 2px solid rgba(255, 255, 0, 0.8);
+  box-shadow: 0 0 20px rgba(255, 255, 0, 0.6), 0 0 40px rgba(255, 255, 0, 0.3);
+  animation: iss-pulse 2s ease-in-out infinite;
 }
 
-/* Orbit path styling - enhanced for visibility */
-.orbit-path {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 25;
-  pointer-events: none;
-  /* Make sure this container doesn't interfere with path visibility */
-  filter: none;
-  overflow: visible;
-  /* Debug outline - comment out in production */
-  /* outline: 1px solid red; */
+.iss-marker-inner img {
+  width: 35px;
+  height: 35px;
+  filter: brightness(1.3) drop-shadow(0 0 3px rgba(255, 255, 255, 0.8));
 }
 
-/* Make sure the SVG paths stand out */
-.orbit-path svg {
-  overflow: visible;
-  width: 100%;
-  height: 100%;
+@keyframes iss-pulse {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(255, 255, 0, 0.6), 0 0 40px rgba(255, 255, 0, 0.3);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(255, 255, 0, 0.8), 0 0 60px rgba(255, 255, 0, 0.4);
+    transform: scale(1.05);
+  }
+}
+
+/* Orbit path styling */
+.orbit-path-line {
+  filter: drop-shadow(0 0 3px #ff9500);
 }
 
 /* ================================================
    CREW PANEL STYLES
    ================================================ */
 
-/* Toggle button - floating action button */
 .crew-toggle {
   position: fixed;
   bottom: 20px;
@@ -404,7 +300,6 @@ html, body, #map-container {
   font-family: 'Roboto Mono', monospace;
 }
 
-/* Crew panel - sliding drawer */
 .crew-panel {
   position: fixed;
   top: 0;
@@ -461,7 +356,6 @@ html, body, #map-container {
   color: #ff6b35;
 }
 
-/* Crew list */
 .crew-list {
   flex: 1;
   overflow-y: auto;
@@ -479,7 +373,6 @@ html, body, #map-container {
   margin-right: 0.5rem;
 }
 
-/* Individual crew member card */
 .crew-member {
   background: rgba(14, 70, 134, 0.2);
   border: 1px solid rgba(30, 87, 153, 0.5);
@@ -604,19 +497,6 @@ html, body, #map-container {
   transform: scale(1.15);
 }
 
-.crew-craft {
-  font-size: 0.75rem;
-  color: #7fb1ff;
-  font-family: 'Roboto Mono', monospace;
-  text-transform: uppercase;
-  letter-spacing: 0.05rem;
-}
-
-.crew-craft i {
-  margin-right: 0.3rem;
-}
-
-/* Crew panel footer */
 .crew-panel-footer {
   padding: 0.8rem 1.2rem;
   background: rgba(10, 56, 114, 0.3);
@@ -627,7 +507,6 @@ html, body, #map-container {
   text-align: center;
 }
 
-/* Error state */
 .crew-error {
   text-align: center;
   color: #ff6b6b;
@@ -645,7 +524,6 @@ html, body, #map-container {
   font-size: 0.85rem;
 }
 
-/* Section divider for other spacecraft */
 .crew-section-divider {
   font-size: 0.7rem;
   color: #7fb1ff;
@@ -657,7 +535,6 @@ html, body, #map-container {
   border-top: 1px solid rgba(30, 87, 153, 0.3);
 }
 
-/* Scrollbar styling for crew list */
 .crew-list::-webkit-scrollbar {
   width: 6px;
 }
@@ -675,26 +552,10 @@ html, body, #map-container {
   background: #2d7bd9;
 }
 
-/* Mobile adjustments for crew panel */
-@media screen and (max-width: 768px) {
-  .crew-panel {
-    width: 100%;
-    right: -100%;
-  }
-
-  .crew-toggle {
-    bottom: 15px;
-    right: 15px;
-    width: 50px;
-    height: 50px;
-  }
-}
-
 /* ================================================
    LIVE FEED PANEL STYLES
    ================================================ */
 
-/* Toggle button - floating action button (left side) */
 .livefeed-toggle {
   position: fixed;
   bottom: 20px;
@@ -721,7 +582,6 @@ html, body, #map-container {
   color: #fff;
 }
 
-/* Live feed panel - sliding drawer from left */
 .livefeed-panel {
   position: fixed;
   top: 0;
@@ -778,7 +638,6 @@ html, body, #map-container {
   color: #ff6b35;
 }
 
-/* Live feed content */
 .livefeed-content {
   flex: 1;
   display: flex;
@@ -790,7 +649,7 @@ html, body, #map-container {
 .livefeed-wrapper {
   position: relative;
   width: 100%;
-  padding-bottom: 56.25%; /* 16:9 aspect ratio */
+  padding-bottom: 56.25%;
   background: #000;
   border-radius: 8px;
   overflow: hidden;
@@ -870,7 +729,6 @@ html, body, #map-container {
   color: #7fb1ff;
 }
 
-/* Live feed panel footer */
 .livefeed-panel-footer {
   padding: 0.8rem 1.2rem;
   background: rgba(10, 56, 114, 0.3);
@@ -894,8 +752,44 @@ html, body, #map-container {
   margin-right: 0.4rem;
 }
 
-/* Mobile adjustments for live feed panel */
+/* ================================================
+   MOBILE RESPONSIVE
+   ================================================ */
+
 @media screen and (max-width: 768px) {
+  .orbital-data {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .data-group {
+    padding: 0.2rem 0.4rem;
+    min-width: 70px;
+  }
+
+  .info-header h1 {
+    font-size: 0.9rem;
+  }
+
+  .location-group {
+    width: 100%;
+    min-width: auto;
+    max-width: none;
+  }
+
+  .crew-panel {
+    width: 100%;
+    right: -100%;
+  }
+
+  .crew-toggle {
+    bottom: 15px;
+    right: 15px;
+    width: 50px;
+    height: 50px;
+  }
+
   .livefeed-panel {
     width: 100%;
     left: -100%;
@@ -907,31 +801,4 @@ html, body, #map-container {
     width: 50px;
     height: 50px;
   }
-}
-
-/* ================================================
-   DAY/NIGHT TERMINATOR STYLES
-   ================================================ */
-
-.day-night-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 15;
-  pointer-events: none;
-}
-
-.day-night-overlay svg {
-  width: 100%;
-  height: 100%;
-}
-
-.day-night-overlay .night-area {
-  transition: all 1s ease;
-}
-
-.day-night-overlay .terminator-line {
-  filter: drop-shadow(0 0 2px rgba(255, 200, 100, 0.5));
 }

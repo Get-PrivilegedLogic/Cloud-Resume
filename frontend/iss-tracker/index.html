@@ -7,6 +7,11 @@
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="style.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <!-- Leaflet Terminator (day/night) -->
+  <script src="https://unpkg.com/@joergdietrich/leaflet.terminator@1.0.0/L.Terminator.js"></script>
 </head>
 <body>  
   <div class="nav-bar">
@@ -110,34 +115,7 @@
     </div>
   </div>
 
-  <div id="map-container">
-    <div class="world-map-background"></div>
-    <div class="day-night-overlay"></div>
-    <div class="grid-overlay"></div>
-    <div id="iss-icon"></div>
-    <div class="orbit-path"></div>
-    <div class="earth-glow"></div>
-    <div class="coordinate-labels">
-      <div class="lat-labels">
-        <span>90°N</span>
-        <span>60°N</span>
-        <span>30°N</span>
-        <span>0°</span>
-        <span>30°S</span>
-        <span>60°S</span>
-        <span>90°S</span>
-      </div>
-      <div class="lng-labels">
-        <span>180°W</span>
-        <span>120°W</span>
-        <span>60°W</span>
-        <span>0°</span>
-        <span>60°E</span>
-        <span>120°E</span>
-        <span>180°E</span>
-      </div>
-    </div>
-  </div>
+  <div id="map-container"></div>
   <script src="app.js"></script>
 </body>
 </html>
