@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git filter-repo:*)",
+      "Bash(pip install:*)",
+      "Bash(git stash:*)",
+      "Bash(\"C:\\\\Users\\\\bradh\\\\AppData\\\\Roaming\\\\Python\\\\Python313\\\\Scripts\\\\git-filter-repo.exe\" --replace-text replacements.txt --force)",
+      "Bash(findstr:*)",
+      "Bash(git remote add:*)",
+      "Bash(del:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nsec: Scrub employer and client names from resume, update PDF\n\nRemove identifiable employer and client names from HTML resume\nand replace with generalized industry descriptors. Update resume\nPDF with scrubbed version.\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git push:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat: Update resume content to mirror latest PDF\n\nUpdate professional summary, expand technical skills from 4 to 8\ncategories, consolidate experience to current role with new bullets,\nadd personal projects section, update education timeline, and add\nin-progress AWS certifications.\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")"
+    ]
+  }
+}
